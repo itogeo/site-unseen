@@ -10,9 +10,9 @@
   --header-h:  52px;
   --sidebar-w: 272px;
 
-  --c-critical: #ff3b30;
-  --c-high:     #ff6b35;
-  --c-moderate: #ffd166;
+  --c-critical: #16a34a;
+  --c-high:     #4ade80;
+  --c-moderate: #bbf7d0;
   --c-low:      #4a5568;
 }
 
@@ -179,9 +179,9 @@ header {
   font-size: 11px; font-weight: 700; letter-spacing: 0.06em;
   margin-bottom: 12px;
 }
-.tier-badge.CRITICAL { background: rgba(255,59,48,0.2);  color: var(--c-critical); border: 1px solid rgba(255,59,48,0.4); }
-.tier-badge.HIGH     { background: rgba(255,107,53,0.2); color: var(--c-high);     border: 1px solid rgba(255,107,53,0.4); }
-.tier-badge.MODERATE { background: rgba(255,209,102,0.2);color: var(--c-moderate); border: 1px solid rgba(255,209,102,0.4); }
+.tier-badge.CRITICAL { background: rgba(22,163,74,0.2);  color: var(--c-critical); border: 1px solid rgba(22,163,74,0.4); }
+.tier-badge.HIGH     { background: rgba(74,222,128,0.15);color: var(--c-high);     border: 1px solid rgba(74,222,128,0.35); }
+.tier-badge.MODERATE { background: rgba(187,247,208,0.1);color: var(--c-moderate); border: 1px solid rgba(187,247,208,0.3); }
 .tier-badge.LOW      { background: rgba(74,85,104,0.3);  color: #9aa5b4;           border: 1px solid rgba(74,85,104,0.5); }
 
 .score-pair {
@@ -215,18 +215,18 @@ header {
   height: 100%; border-radius: 3px;
   transition: width 0.3s ease;
 }
-.score-bar-fill.corp { background: var(--c-high); }
-.score-bar-fill.vuln { background: #a78bfa; }
-.score-bar-fill.penalty { background: var(--c-critical); }
+.score-bar-fill.corp   { background: var(--c-high); }
+.score-bar-fill.infra  { background: var(--c-critical); }
+.score-bar-fill.penalty { background: #f87171; }
 .score-bar-num { width: 28px; text-align: right; color: var(--text); font-size: 10px; }
 
 .known-dc-badge {
   display: flex; align-items: center; gap: 8px;
-  background: rgba(255,59,48,0.1); border: 1px solid rgba(255,59,48,0.3);
+  background: rgba(22,163,74,0.1); border: 1px solid rgba(22,163,74,0.3);
   border-radius: 6px; padding: 8px 10px; margin-bottom: 12px;
   font-size: 11px;
 }
-.known-dc-icon { font-size: 16px; }
+.known-dc-icon { font-size: 16px; color: var(--c-critical); }
 .known-dc-text { line-height: 1.4; }
 .known-dc-company { font-weight: 700; color: var(--c-critical); }
 
@@ -335,7 +335,7 @@ header {
 .od-icon {
   font-size: 18px; margin-bottom: 6px; display: block; line-height: 1;
 }
-.od-icon-dc   { color: #ff3b30; }
+.od-icon-dc   { color: #22c55e; }
 .od-icon-acq  { color: #f59e0b; }
 .od-icon-grid { color: #34d399; }
 

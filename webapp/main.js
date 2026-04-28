@@ -1,33 +1,32 @@
 'use strict';
 
+// data field values → display labels
+const TIER_DISPLAY = {
+  CRITICAL: 'Prime',
+  HIGH:     'Strong',
+  MODERATE: 'Moderate',
+  LOW:      'Low',
+};
+
 const TIER_COLORS = {
-  CRITICAL: '#ff3b30',
-  HIGH:     '#ff6b35',
-  MODERATE: '#ffd166',
-  LOW:      '#4a5568',
+  CRITICAL: '#16a34a',  // green-700
+  HIGH:     '#4ade80',  // green-400
+  MODERATE: '#bbf7d0',  // green-100
+  LOW:      '#374151',  // gray-700
 };
 
-const SCORE_LABELS = {
-  corp: [
-    { key: 'score_transmission',  label: 'Transmission lines',   type: 'corp',    max: 20 },
-    { key: 'score_substation',    label: 'Substation proximity',  type: 'corp',    max: 15 },
-    { key: 'score_water',         label: 'Water availability',   type: 'corp',    max: 20 },
-    { key: 'score_aquifer',       label: 'Aquifer access',       type: 'corp',    max: 10 },
-    { key: 'score_land_area',     label: 'Land area',            type: 'corp',    max: 15 },
-    { key: 'score_terrain',       label: 'Terrain flatness',     type: 'corp',    max: 10 },
-    { key: 'score_opp_zone',      label: 'Opportunity zone',     type: 'corp',    max: 5  },
-    { key: 'score_flood_penalty', label: 'Flood risk',           type: 'penalty', max: 10 },
-  ],
-  vuln: [
-    { key: 'score_poverty',           label: 'Poverty rate',             type: 'vuln', max: 25 },
-    { key: 'score_ejscreen',          label: 'EJScreen burden',          type: 'vuln', max: 20 },
-    { key: 'score_sacrifice_history', label: 'Industry history',         type: 'vuln', max: 15 },
-    { key: 'score_remoteness',        label: 'Remoteness',               type: 'vuln', max: 10 },
-    { key: 'score_jurisdiction',      label: 'Jurisdictional fragility', type: 'vuln', max: 10 },
-  ],
-};
+const SCORE_LABELS = [
+  { key: 'score_transmission',  label: 'Transmission lines',   type: 'infra',   max: 20 },
+  { key: 'score_substation',    label: 'Substation proximity',  type: 'infra',   max: 15 },
+  { key: 'score_water',         label: 'Water availability',   type: 'infra',   max: 20 },
+  { key: 'score_aquifer',       label: 'Aquifer access',       type: 'infra',   max: 10 },
+  { key: 'score_land_area',     label: 'Land area',            type: 'infra',   max: 15 },
+  { key: 'score_terrain',       label: 'Terrain flatness',     type: 'infra',   max: 10 },
+  { key: 'score_opp_zone',      label: 'Opportunity zone',     type: 'infra',   max: 5  },
+  { key: 'score_flood_penalty', label: 'Flood risk',           type: 'penalty', max: 10 },
+];
 
-// ── Icon generation for intelligence symbol layers ─────────────────────────────
+// ── Icon generation for market-signal symbol layers ────────────────────────────
 
 function makeIconImage(shape, color, size = 40) {
   const c = document.createElement('canvas');
@@ -70,8 +69,6 @@ function makeIconImage(shape, color, size = 40) {
 }
 
 // ── Overlay layer configuration ────────────────────────────────────────────────
-// belowTribal: true  → rendered under tribal fill (infrastructure context)
-// aboveTribal: true  → rendered above tribal fill (clickable intelligence points)
 
 const OVERLAY_CONFIG = {
   transmission_lines: {
@@ -149,9 +146,9 @@ const OVERLAY_CONFIG = {
     popupLabel: (p) => `${p.Operator || 'Gas Pipeline'} — ${p.Type || ''}`.trim(),
   },
 
-  // ── Intelligence layers — rendered above tribal fill ────────────────────────
+  // ── Market signal layers — rendered above tribal fill ──────────────────────
   known_sites: {
-    label: 'Known Data Centers',
+    label: 'Existing Data Centers',
     aboveTribal: true,
     type: 'symbol',
     layout: {
@@ -164,7 +161,7 @@ const OVERLAY_CONFIG = {
     popupLabel: (p) => `${p.company || p.name || 'Data Center'}${p.status ? ' — ' + p.status : ''}`,
   },
   land_acquisitions: {
-    label: 'Flagged Acquisitions',
+    label: 'Developer Activity',
     aboveTribal: true,
     type: 'symbol',
     layout: {
@@ -177,7 +174,7 @@ const OVERLAY_CONFIG = {
     popupLabel: (p) => `${p.buyer || 'Unknown'} — ${p.state || ''} (${p.confidence || '?'}% confidence, ${p.source || ''})`,
   },
   ferc_flags: {
-    label: 'Grid Expansion Flags',
+    label: 'Grid Investment',
     aboveTribal: true,
     type: 'symbol',
     layout: {
@@ -195,7 +192,6 @@ const OVERLAY_CONFIG = {
   },
 };
 
-// Intelligence layer names for hover/click suppression
 const INTEL_LAYERS = ['known_sites', 'land_acquisitions', 'ferc_flags'];
 
 let map, popup, overlayPopup;
@@ -244,20 +240,18 @@ function tierFillColor() {
 
 function scoreFillColor(field) {
   return ['interpolate', ['linear'], ['coalesce', ['get', field], 0],
-    0,    '#1a2035',
-    0.25, '#1e3a5f',
-    0.5,  '#2d6a9f',
-    0.7,  '#ffd166',
-    0.85, '#ff6b35',
-    1,    '#ff3b30',
+    0,    '#111827',
+    0.25, '#14532d',
+    0.5,  '#16a34a',
+    0.7,  '#4ade80',
+    0.85, '#86efac',
+    1,    '#d9f99d',
   ];
 }
 
 function buildFillColor() {
-  if (colorMode === 'tier')     return tierFillColor();
-  if (colorMode === 'combined') return scoreFillColor('combined_score');
-  if (colorMode === 'corp')     return scoreFillColor('corp_score');
-  if (colorMode === 'vuln')     return scoreFillColor('vuln_score');
+  if (colorMode === 'tier')  return tierFillColor();
+  if (colorMode === 'corp')  return scoreFillColor('corp_score');
   return tierFillColor();
 }
 
@@ -296,7 +290,6 @@ async function toggleOverlay(name, visible) {
     return;
   }
 
-  // First time: fetch data + add source/layer
   if (!map.getSource(sourceId)) {
     if (statusEl) statusEl.textContent = '…';
     const geojson = await fetchOverlay(name);
@@ -318,10 +311,8 @@ async function toggleOverlay(name, visible) {
     };
     if (cfg.layout) layerDef.layout = cfg.layout;
 
-    // Intelligence layers above tribal fill; infrastructure below
     map.addLayer(layerDef, cfg.belowTribal ? 'tribal-fill' : undefined);
 
-    // Hover popup
     map.on('mouseenter', layerId, (e) => {
       if (!e.features.length) return;
       map.getCanvas().style.cursor = 'pointer';
@@ -336,7 +327,6 @@ async function toggleOverlay(name, visible) {
       overlayPopup.remove();
     });
 
-    // Above-tribal click handler: open detail panel + prevent tribal-fill from firing
     if (cfg.aboveTribal) {
       map.on('click', layerId, (e) => {
         if (!e.features.length) return;
@@ -362,15 +352,12 @@ function renderLegend() {
     el.innerHTML = Object.entries(TIER_COLORS).map(([tier, color]) => `
       <div class="legend-row">
         <span class="legend-swatch" style="background:${color}"></span>
-        <span class="legend-label">${tier.charAt(0) + tier.slice(1).toLowerCase()}</span>
+        <span class="legend-label">${TIER_DISPLAY[tier]}</span>
       </div>`).join('');
   } else {
-    const label = colorMode === 'combined' ? 'Combined Score'
-                : colorMode === 'corp'     ? 'Corp Score'
-                : 'Vuln Score';
     el.innerHTML = `
-      <div class="gradient-bar" style="background:linear-gradient(to right,#1a2035,#2d6a9f,#ffd166,#ff3b30)"></div>
-      <div class="gradient-labels"><span>0</span><span>${label}</span><span>1</span></div>`;
+      <div class="gradient-bar" style="background:linear-gradient(to right,#111827,#14532d,#16a34a,#4ade80,#d9f99d)"></div>
+      <div class="gradient-labels"><span>0</span><span>Siting Score</span><span>1</span></div>`;
   }
 }
 
@@ -379,13 +366,13 @@ function renderStats(stats) {
   if (!stats) { el.innerHTML = ''; return; }
   el.innerHTML = `
     <div class="stat-row"><span class="stat-label">Total tribal lands</span><span class="stat-val">${stats.total_tribal_lands}</span></div>
-    <div class="stat-row"><span class="stat-label">Critical risk</span><span class="stat-val critical">${stats.critical_count}</span></div>
-    <div class="stat-row"><span class="stat-label">High risk</span><span class="stat-val high">${stats.high_count}</span></div>
-    <div class="stat-row"><span class="stat-label">Moderate risk</span><span class="stat-val moderate">${stats.moderate_count}</span></div>
+    <div class="stat-row"><span class="stat-label">Prime opportunity</span><span class="stat-val critical">${stats.critical_count}</span></div>
+    <div class="stat-row"><span class="stat-label">Strong opportunity</span><span class="stat-val high">${stats.high_count}</span></div>
+    <div class="stat-row"><span class="stat-label">Moderate opportunity</span><span class="stat-val moderate">${stats.moderate_count}</span></div>
     <div class="stat-row"><span class="stat-label">Total area (km²)</span><span class="stat-val">${Math.round(stats.total_area_km2).toLocaleString()}</span></div>
-    <div class="stat-row"><span class="stat-label">Known data centers</span><span class="stat-val">${stats.known_sites}</span></div>`;
+    <div class="stat-row"><span class="stat-label">Existing data centers</span><span class="stat-val">${stats.known_sites}</span></div>`;
   const headerEl = document.getElementById('header-stats');
-  headerEl.textContent = `${stats.high_count} HIGH · ${stats.moderate_count} MODERATE · ${stats.total_tribal_lands} total`;
+  headerEl.textContent = `${stats.critical_count} PRIME · ${stats.high_count} STRONG · ${stats.total_tribal_lands} total`;
 }
 
 function renderTierCounts(features) {
@@ -434,10 +421,8 @@ function showOverlayDetail(layerName, props) {
         <div class="od-row"><span class="od-key">Source</span><span class="od-val">OpenStreetMap</span></div>
       </div>
       <div class="od-blurb">
-        A known data center facility mapped in OpenStreetMap near tribal lands.
+        An existing data center near or on tribal lands — proof that the area already supports this type of development.
         ${company ? `Operated by <strong>${company}</strong>.` : ''}
-        ${status === 'under_construction' ? ' Currently under construction — infrastructure is being built.' : ''}
-        ${status === 'planned' ? ' In the planning stage — not yet built.' : ''}
       </div>`;
 
   } else if (layerName === 'land_acquisitions') {
@@ -447,7 +432,7 @@ function showOverlayDetail(layerName, props) {
     const state   = props.state || '';
     const source  = props.source || '';
     const date    = props.file_date || '';
-    const confColor = conf >= 65 ? '#f87171' : conf >= 50 ? '#fbbf24' : '#94a3b8';
+    const confColor = conf >= 65 ? '#4ade80' : conf >= 50 ? '#fbbf24' : '#94a3b8';
 
     html = `
       <div class="od-icon od-icon-acq">▲</div>
@@ -460,9 +445,7 @@ function showOverlayDetail(layerName, props) {
         ${date ? `<div class="od-row"><span class="od-key">Filed</span><span class="od-val">${date}</span></div>` : ''}
       </div>
       <div class="od-blurb">
-        ${source.includes('EDGAR')
-          ? `<strong>${buyer}</strong> filed an SEC 8-K mentioning <em>data center</em> activity in ${state || 'this state'}, which has significant tribal land concentration. 8-K filings announce material corporate events — this signal suggests planned site acquisition or construction activity.`
-          : `A USACE construction permit application from <strong>${buyer}</strong> was detected near tribal lands in ${state || 'this state'}.`}
+        Active developer interest in this region — a positive demand signal that hyperscalers are seeking sites near tribal lands here.
       </div>`;
 
   } else if (layerName === 'ferc_flags') {
@@ -488,9 +471,7 @@ function showOverlayDetail(layerName, props) {
         <div class="od-row"><span class="od-key">Source</span><span class="od-val">EIA Form 860M</span></div>
       </div>
       <div class="od-blurb">
-        A large planned generator (${mw ? mw.toLocaleString() + ' MW' : 'significant capacity'}) within 200 km of tribal lands.
-        ${mw && mw >= 500 ? ' At this scale it can power a major hyperscale data center campus.' : ''}
-        Grid expansion at this magnitude is one of the strongest pre-construction signals of incoming data center development.
+        A large planned generator (${mw ? mw.toLocaleString() + ' MW' : 'significant capacity'}) near tribal lands — grid investment that directly improves siting potential for data center development.
       </div>`;
   }
 
@@ -515,38 +496,15 @@ function fmtRaw(v, max) {
 function showDetail(props) {
   const panel = document.getElementById('detail-panel');
   const content = document.getElementById('detail-content');
+  const tierDisplay = TIER_DISPLAY[props.risk_tier] || props.risk_tier;
 
-  let knownHtml = '';
+  let existingDcHtml = '';
   if (props.known_datacenter) {
-    knownHtml = `<div class="known-dc-badge">
-      <span class="known-dc-icon">⚠</span>
+    existingDcHtml = `<div class="known-dc-badge">
+      <span class="known-dc-icon">✓</span>
       <div class="known-dc-text">
-        <div class="known-dc-company">${props.known_dc_company || 'Unknown company'}</div>
-        <div>Known data center — ${props.known_dc_status || 'status unknown'}</div>
-      </div>
-    </div>`;
-  }
-
-  let impactHtml = '';
-  if (props.water_annual_millions) {
-    impactHtml = `
-    <div class="score-section-title">Projected impacts (single hyperscale DC)</div>
-    <div class="impact-grid">
-      <div class="impact-card">
-        <div class="impact-val">${props.water_annual_millions}M</div>
-        <div class="impact-label">gal/yr water</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-val">${props.jobs_permanent_actual || 3}</div>
-        <div class="impact-label">permanent jobs</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-val">+${props.elec_rate_increase_low_pct || 50}–${props.elec_rate_increase_high_pct || 267}%</div>
-        <div class="impact-label">elec rate increase</div>
-      </div>
-      <div class="impact-card">
-        <div class="impact-val">${props.heat_island_max_f || 16}°F</div>
-        <div class="impact-label">heat island</div>
+        <div class="known-dc-company">${props.known_dc_company || 'Data center present'}</div>
+        <div>Existing facility — ${props.known_dc_status || 'status unknown'}</div>
       </div>
     </div>`;
   }
@@ -555,7 +513,7 @@ function showDetail(props) {
     const r = fmtRaw(value, item.max);
     if (r === '—') return '';
     const isPenalty = item.type === 'penalty';
-    const fillClass = isPenalty ? 'penalty' : item.type;
+    const fillClass = isPenalty ? 'penalty' : 'infra';
     return `<div class="score-bar-row">
       <span class="score-bar-label">${item.label}</span>
       <div class="score-bar-track">
@@ -565,19 +523,18 @@ function showDetail(props) {
     </div>`;
   }
 
-  const corpRows = SCORE_LABELS.corp.map(it => barRow(it, props[it.key])).join('');
-  const vulnRows = SCORE_LABELS.vuln.map(it => barRow(it, props[it.key])).join('');
+  const infraRows = SCORE_LABELS.map(it => barRow(it, props[it.key])).join('');
 
   content.innerHTML = `
-    ${knownHtml}
+    ${existingDcHtml}
     <div class="detail-name">${props.tribe_name || '—'}</div>
     <div class="detail-fullname">${props.tribe_name_full || ''}</div>
-    <span class="tier-badge ${props.risk_tier}">${props.risk_tier}</span>
+    <span class="tier-badge ${props.risk_tier}">${tierDisplay}</span>
 
     <div class="score-pair">
       <div class="score-card accent">
-        <div class="score-card-label">Combined</div>
-        <div class="score-card-val">${fmtScore(props.combined_score)}</div>
+        <div class="score-card-label">Siting Score</div>
+        <div class="score-card-val">${fmtScore(props.corp_score)}</div>
       </div>
       <div class="score-card">
         <div class="score-card-label">Area (km²)</div>
@@ -585,24 +542,14 @@ function showDetail(props) {
       </div>
     </div>
 
-    <div class="score-pair">
-      <div class="score-card">
-        <div class="score-card-label">Corp Score</div>
-        <div class="score-card-val" style="color:var(--c-high);font-size:16px">${fmtScore(props.corp_score)}</div>
-      </div>
-      <div class="score-card">
-        <div class="score-card-label">Vuln Score</div>
-        <div class="score-card-val" style="color:#a78bfa;font-size:16px">${fmtScore(props.vuln_score)}</div>
-      </div>
-    </div>
+    <div class="score-section-title">Infrastructure siting factors</div>
+    ${infraRows}
 
-    ${impactHtml}
-
-    <div class="score-section-title">Corporate attractiveness factors</div>
-    ${corpRows}
-
-    <div class="score-section-title">Community vulnerability factors</div>
-    ${vulnRows}`;
+    <div class="score-section-title" style="margin-top:12px">Sovereign advantages</div>
+    <div class="hint" style="font-size:11px;color:#9ca3af;padding:4px 0">
+      Tribal sovereign lands can offer streamlined permitting, custom power rate negotiation,
+      Opportunity Zone tax incentives, and Section 17 corporate charter flexibility.
+    </div>`;
 
   panel.classList.remove('hidden');
 }
@@ -646,8 +593,7 @@ function initMap(geojson) {
   });
 
   map.on('load', () => {
-    // Register canvas icons for intelligence symbol layers (pixelRatio:2 for retina)
-    map.addImage('icon-dc',   makeIconImage('square',   '#ff3b30'), { pixelRatio: 2 });
+    map.addImage('icon-dc',   makeIconImage('square',   '#22c55e'), { pixelRatio: 2 });
     map.addImage('icon-acq',  makeIconImage('triangle', '#f59e0b'), { pixelRatio: 2 });
     map.addImage('icon-grid', makeIconImage('diamond',  '#34d399'), { pixelRatio: 2 });
 
@@ -687,7 +633,6 @@ function initMap(geojson) {
 
     map.on('mousemove', 'tribal-fill', (e) => {
       if (!e.features.length) return;
-      // Suppress tribal hover when cursor is over an intelligence layer feature
       const intelIds = INTEL_LAYERS.map(n => `overlay-${n}-layer`).filter(id => map.getLayer(id));
       if (intelIds.length && map.queryRenderedFeatures(e.point, { layers: intelIds }).length) {
         map.getCanvas().style.cursor = 'pointer';
@@ -698,13 +643,12 @@ function initMap(geojson) {
       map.getCanvas().style.cursor = 'pointer';
       const props = e.features[0].properties;
       const tier = props.risk_tier;
+      const tierDisplay = TIER_DISPLAY[tier] || tier;
       popup.setLngLat(e.lngLat).setHTML(`
         <div class="popup-name">${props.tribe_name || '—'}</div>
-        <div class="popup-tier ${tier}">${tier}</div>
+        <div class="popup-tier ${tier}">${tierDisplay}</div>
         <div class="popup-score">
-          <span>Combined <span class="popup-score-val">${fmtScore(props.combined_score)}</span></span>
-          <span>Corp <span class="popup-score-val">${fmtScore(props.corp_score)}</span></span>
-          <span>Vuln <span class="popup-score-val">${fmtScore(props.vuln_score)}</span></span>
+          <span>Siting <span class="popup-score-val">${fmtScore(props.corp_score)}</span></span>
         </div>
         <div class="popup-hint">Click for full breakdown</div>
       `).addTo(map);
@@ -725,7 +669,6 @@ function initMap(geojson) {
 
     document.getElementById('loading').classList.add('hidden');
 
-    // Auto-load all checked overlay layers
     document.querySelectorAll('.overlay-cb:checked').forEach(cb => toggleOverlay(cb.value, true));
   });
 }

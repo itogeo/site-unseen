@@ -1,11 +1,10 @@
 """
-Exports final scored data as optimized GeoJSON (and optionally PMTiles)
-for Mapbox GL JS deployment on Cloudflare Pages.
+Exports final scored data as optimized GeoJSON for Mapbox GL JS / Cloudflare Pages.
 
 Outputs:
-  output/tribal_datacenter_risk.geojson     — full polygons for Mapbox
+  output/tribal_datacenter_risk.geojson     — full polygons (webapp-ready)
   output/tribal_datacenter_risk_pts.geojson — centroid points (fast load)
-  output/known_sites.geojson                — confirmed Honor the Earth sites only
+  output/known_sites.geojson                — existing data center sites
   output/stats.json                         — summary counts for dashboard cards
 """
 
@@ -23,20 +22,17 @@ OUTPUT_CRS = "EPSG:4326"
 EXPORT_COLS = [
     "geoid", "tribe_name", "tribe_name_full",
     "area_km2", "state_fips",
-    "corp_score", "vuln_score", "combined_score",
+    "corp_score", "siting_score", "combined_score",
     "risk_tier", "priority",
     "score_transmission", "score_substation", "score_water",
     "score_aquifer", "score_land_area", "score_terrain",
     "score_flood_penalty", "score_opp_zone",
-    "score_poverty", "score_ejscreen",
-    "score_sacrifice_history", "score_remoteness", "score_jurisdiction",
     "known_datacenter", "known_dc_status", "known_dc_company",
     "geometry"
 ]
 
 
 def round_scores(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    """Round score columns to 3 decimal places to reduce file size."""
     score_cols = [c for c in gdf.columns if c.startswith("score_") or c.endswith("_score")]
     for col in score_cols:
         if col in gdf.columns:
@@ -45,10 +41,6 @@ def round_scores(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
 
 
 def simplify_geometries(gdf: gpd.GeoDataFrame, tolerance_m: float = 500) -> gpd.GeoDataFrame:
-    """
-    Simplify polygon geometries to reduce file size.
-    500m tolerance is imperceptible at zoom 6-8 (national view).
-    """
     working_crs = "EPSG:5070"
     gdf = gdf.to_crs(working_crs)
     gdf["geometry"] = gdf.geometry.simplify(tolerance_m, preserve_topology=True)
@@ -103,8 +95,8 @@ def main():
         "moderate_count":     int((gdf_stats["risk_tier"] == "MODERATE").sum()),
         "known_sites":        int(gdf_stats["known_datacenter"].sum()) if "known_datacenter" in gdf_stats.columns else 0,
         "total_area_km2":     float(gdf_stats["area_km2"].sum().round(0)) if "area_km2" in gdf_stats.columns else 0,
-        "top_critical": gdf_stats[gdf_stats["risk_tier"] == "CRITICAL"].nlargest(5, "combined_score")[
-            ["tribe_name", "combined_score", "corp_score", "vuln_score"]
+        "top_prime": gdf_stats[gdf_stats["risk_tier"] == "CRITICAL"].nlargest(5, "corp_score")[
+            ["tribe_name", "corp_score", "area_km2"]
         ].round(3).to_dict("records")
     }
 

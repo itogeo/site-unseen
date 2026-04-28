@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Site Unseen — Tribal Land Data Center Risk</title>
+  <title>Tribal DC Scout — Data Center Opportunity Map</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
@@ -13,12 +13,12 @@
   <header>
     <div class="header-title">
       <span class="logo-icon">⬡</span>
-      <span>Site Unseen</span>
-      <span class="header-sub">Tribal Land Data Center Risk Map</span>
+      <span>Tribal DC Scout</span>
+      <span class="header-sub">Sovereign Land Data Center Opportunity</span>
     </div>
     <div class="header-right">
       <span id="header-stats" class="header-stat-text"></span>
-      <a class="header-link" href="https://honorearth.org" target="_blank" rel="noopener">Honor the Earth ↗</a>
+      <a class="header-link" href="https://itogeospatial.com" target="_blank" rel="noopener">Ito Geospatial ↗</a>
     </div>
   </header>
 
@@ -30,19 +30,11 @@
         <div id="color-selector">
           <label class="layer-row">
             <input type="radio" name="colorby" value="tier" checked />
-            <span class="layer-label">Risk Tier</span>
-          </label>
-          <label class="layer-row">
-            <input type="radio" name="colorby" value="combined" />
-            <span class="layer-label">Combined Score</span>
+            <span class="layer-label">Opportunity Tier</span>
           </label>
           <label class="layer-row">
             <input type="radio" name="colorby" value="corp" />
-            <span class="layer-label">Corp Attractiveness</span>
-          </label>
-          <label class="layer-row">
-            <input type="radio" name="colorby" value="vuln" />
-            <span class="layer-label">Community Vulnerability</span>
+            <span class="layer-label">Siting Score</span>
           </label>
         </div>
       </section>
@@ -53,13 +45,13 @@
           <label class="filter-row">
             <input type="checkbox" class="tier-cb" value="CRITICAL" checked />
             <span class="tier-dot critical"></span>
-            <span>Critical</span>
+            <span>Prime</span>
             <span class="tier-count" id="count-CRITICAL">0</span>
           </label>
           <label class="filter-row">
             <input type="checkbox" class="tier-cb" value="HIGH" checked />
             <span class="tier-dot high"></span>
-            <span>High</span>
+            <span>Strong</span>
             <span class="tier-count" id="count-HIGH">0</span>
           </label>
           <label class="filter-row">
@@ -116,23 +108,23 @@
             <span class="overlay-status" id="status-gas_pipelines"></span>
           </label>
 
-          <div class="layer-group-label" style="margin-top:8px">Intelligence</div>
+          <div class="layer-group-label" style="margin-top:8px">Market Signals</div>
           <label class="overlay-row" data-layer="known_sites">
             <input type="checkbox" class="overlay-cb" value="known_sites" checked />
-            <span class="overlay-swatch swatch-square" style="background:#ff3b30"></span>
-            <span class="overlay-label">Known Data Centers</span>
+            <span class="overlay-swatch swatch-square" style="background:#22c55e"></span>
+            <span class="overlay-label">Existing Data Centers</span>
             <span class="overlay-status" id="status-known_sites"></span>
           </label>
           <label class="overlay-row" data-layer="land_acquisitions">
             <input type="checkbox" class="overlay-cb" value="land_acquisitions" checked />
             <span class="overlay-swatch swatch-triangle" style="--sw-color:#f59e0b"></span>
-            <span class="overlay-label">Flagged Acquisitions</span>
+            <span class="overlay-label">Developer Activity</span>
             <span class="overlay-status" id="status-land_acquisitions"></span>
           </label>
           <label class="overlay-row" data-layer="ferc_flags">
             <input type="checkbox" class="overlay-cb" value="ferc_flags" checked />
             <span class="overlay-swatch swatch-diamond" style="--sw-color:#34d399"></span>
-            <span class="overlay-label">Grid Expansion Flags</span>
+            <span class="overlay-label">Grid Investment</span>
             <span class="overlay-status" id="status-ferc_flags"></span>
           </label>
 
@@ -151,13 +143,12 @@
 
       <section class="panel-section about-section">
         <p class="hint">
-          Reverse-engineers corporate data center siting criteria to flag highest-risk tribal communities
-          <strong>before</strong> targeting begins.
+          Scores every tribal land unit on data center siting criteria — power, water, fiber, land, incentives —
+          to identify <strong>where sovereign development potential is highest</strong>.
         </p>
         <p class="hint" style="margin-top:8px">
-          Built by <strong>Ito Geospatial</strong> for
-          <a href="https://honorearth.org" target="_blank" rel="noopener" class="about-link">Honor the Earth</a>
-          / No Data Center Coalition.
+          Built by <strong>Ito Geospatial</strong>.
+          Tribal sovereign lands offer unique regulatory and tax advantages for data center development.
         </p>
       </section>
 
