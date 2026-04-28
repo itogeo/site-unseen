@@ -16,14 +16,16 @@ const TIER_COLORS = {
 };
 
 const SCORE_LABELS = [
-  { key: 'score_transmission',  label: 'Transmission lines',   type: 'infra',   max: 20 },
-  { key: 'score_substation',    label: 'Substation proximity',  type: 'infra',   max: 15 },
-  { key: 'score_water',         label: 'Water availability',   type: 'infra',   max: 20 },
-  { key: 'score_aquifer',       label: 'Aquifer access',       type: 'infra',   max: 10 },
-  { key: 'score_land_area',     label: 'Land area',            type: 'infra',   max: 15 },
-  { key: 'score_terrain',       label: 'Terrain flatness',     type: 'infra',   max: 10 },
-  { key: 'score_opp_zone',      label: 'Opportunity zone',     type: 'infra',   max: 5  },
-  { key: 'score_flood_penalty', label: 'Flood risk',           type: 'penalty', max: 10 },
+  { key: 'score_transmission',    label: 'Transmission lines',  type: 'infra',   max: 20 },
+  { key: 'score_substation',      label: 'Substation proximity', type: 'infra',   max: 15 },
+  { key: 'score_water',           label: 'Water availability',  type: 'infra',   max: 20 },
+  { key: 'score_aquifer',         label: 'Aquifer access',      type: 'infra',   max: 10 },
+  { key: 'score_land_area',       label: 'Land area',           type: 'infra',   max: 15 },
+  { key: 'score_terrain',         label: 'Terrain flatness',    type: 'infra',   max: 10 },
+  { key: 'score_fiber_proximity', label: 'Fiber backbone',      type: 'infra',   max: 10 },
+  { key: 'score_power_cost',      label: 'Power cost (state)',  type: 'infra',   max: 15 },
+  { key: 'score_opp_zone',        label: 'Opportunity zone',    type: 'infra',   max: 5  },
+  { key: 'score_flood_penalty',   label: 'Flood risk',          type: 'penalty', max: 10 },
 ];
 
 // ── Icon generation for market-signal symbol layers ────────────────────────────
@@ -144,6 +146,17 @@ const OVERLAY_CONFIG = {
       'line-dasharray': [4, 2],
     },
     popupLabel: (p) => `${p.Operator || 'Gas Pipeline'} — ${p.Type || ''}`.trim(),
+  },
+  fiber_optic: {
+    label: 'Fiber Backbone',
+    belowTribal: true,
+    type: 'line',
+    paint: {
+      'line-color': '#818cf8',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 8, 1.5],
+      'line-opacity': 0.65,
+    },
+    popupLabel: (p) => `${p.OWNER || p.CABLE_TYPE || 'Fiber Backbone'}`.trim(),
   },
 
   // ── Market signal layers — rendered above tribal fill ──────────────────────

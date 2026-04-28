@@ -26,6 +26,7 @@ EXPORT_COLS = [
     "risk_tier", "priority",
     "score_transmission", "score_substation", "score_water",
     "score_aquifer", "score_land_area", "score_terrain",
+    "score_fiber_proximity", "score_power_cost",
     "score_flood_penalty", "score_opp_zone",
     "known_datacenter", "known_dc_status", "known_dc_company",
     "geometry"

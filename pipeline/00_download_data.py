@@ -155,9 +155,12 @@ print("  [skip-large] USGS NHD national file (~10GB) — download manually if ne
 print("    https://prd-tnm.s3.amazonaws.com/StagedProducts/Hydrography/NHD/National/HighResolution/GDB/NHD_H_National_GDB.zip")
 print("    Extract to: data/raw/nhd_water/")
 
-# ── 9. FCC Broadband (fiber) ────────────────────────────────────────────────
-print("  [manual] FCC Broadband: https://broadbandmap.fcc.gov/data-download")
-print("           Fixed Broadband Availability > Fiber → data/raw/fcc_fiber/")
+# ── 9. Fiber Optic Backbone (HIFLD via ArcGIS REST) ────────────────────────
+download_arcgis_rest(
+    service_url="https://services1.arcgis.com/Hp6G80Pky0om7QvQ/arcgis/rest/services/HIFLD_Fiber_Optic_Cables/FeatureServer",
+    dest=RAW / "fiber_optic" / "fiber_optic.geojson",
+    label="Fiber Optic Backbone Cables (HIFLD REST)"
+)
 
 # ── 10. FEMA National Flood Hazard Layer ───────────────────────────────────
 print("  [manual] FEMA NFHL: https://msc.fema.gov/portal/advanceSearch")
