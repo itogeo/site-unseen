@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Site Unseen — Tribal Land Data Center Risk</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-title">
+      <span class="logo-icon">⬡</span>
+      <span>Site Unseen</span>
+      <span class="header-sub">Tribal Land Data Center Risk Map</span>
+    </div>
+    <div class="header-right">
+      <span id="header-stats" class="header-stat-text"></span>
+      <a class="header-link" href="https://honorearth.org" target="_blank" rel="noopener">Honor the Earth ↗</a>
+    </div>
+  </header>
+
+  <div id="app">
+    <aside id="sidebar">
+
+      <section class="panel-section">
+        <h3>Color By</h3>
+        <div id="color-selector">
+          <label class="layer-row">
+            <input type="radio" name="colorby" value="tier" checked />
+            <span class="layer-label">Risk Tier</span>
+          </label>
+          <label class="layer-row">
+            <input type="radio" name="colorby" value="combined" />
+            <span class="layer-label">Combined Score</span>
+          </label>
+          <label class="layer-row">
+            <input type="radio" name="colorby" value="corp" />
+            <span class="layer-label">Corp Attractiveness</span>
+          </label>
+          <label class="layer-row">
+            <input type="radio" name="colorby" value="vuln" />
+            <span class="layer-label">Community Vulnerability</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h3>Filter by Tier</h3>
+        <div id="tier-filters">
+          <label class="filter-row">
+            <input type="checkbox" class="tier-cb" value="CRITICAL" checked />
+            <span class="tier-dot critical"></span>
+            <span>Critical</span>
+            <span class="tier-count" id="count-CRITICAL">0</span>
+          </label>
+          <label class="filter-row">
+            <input type="checkbox" class="tier-cb" value="HIGH" checked />
+            <span class="tier-dot high"></span>
+            <span>High</span>
+            <span class="tier-count" id="count-HIGH">0</span>
+          </label>
+          <label class="filter-row">
+            <input type="checkbox" class="tier-cb" value="MODERATE" checked />
+            <span class="tier-dot moderate"></span>
+            <span>Moderate</span>
+            <span class="tier-count" id="count-MODERATE">0</span>
+          </label>
+          <label class="filter-row">
+            <input type="checkbox" class="tier-cb" value="LOW" checked />
+            <span class="tier-dot low"></span>
+            <span>Low</span>
+            <span class="tier-count" id="count-LOW">0</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="panel-section">
+        <h3>Legend</h3>
+        <div id="legend"></div>
+      </section>
+
+      <section class="panel-section">
+        <h3>Summary</h3>
+        <div id="stats-panel"></div>
+      </section>
+
+      <section class="panel-section about-section">
+        <p class="hint">
+          Reverse-engineers corporate data center siting criteria to flag highest-risk tribal communities
+          <strong>before</strong> targeting begins.
+        </p>
+        <p class="hint" style="margin-top:8px">
+          Built by <strong>Ito Geospatial</strong> for
+          <a href="https://honorearth.org" target="_blank" rel="noopener" class="about-link">Honor the Earth</a>
+          / No Data Center Coalition.
+        </p>
+      </section>
+
+    </aside>
+
+    <main id="main-view">
+      <div id="map"></div>
+      <div id="detail-panel" class="hidden">
+        <button id="detail-close" title="Close">×</button>
+        <div id="detail-content"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="loading">Loading tribal land data…</div>
+
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4.7.1/dist/maplibre-gl.min.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
