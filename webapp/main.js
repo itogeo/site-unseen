@@ -27,10 +27,112 @@ const SCORE_LABELS = {
   ],
 };
 
-let map, popup;
+// Overlay layer configuration — each entry defines how to render + label it
+const OVERLAY_CONFIG = {
+  transmission_lines: {
+    label: 'Transmission Lines',
+    type: 'line',
+    paint: {
+      'line-color': '#f0c040',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 8, 2],
+      'line-opacity': 0.75,
+    },
+    popupProp: 'VOLTAGE',
+    popupLabel: (p) => `${p.VOLTAGE || '?'}kV — ${p.TYPE || ''} ${p.STATUS || ''}`.trim(),
+  },
+  substations: {
+    label: 'Substations',
+    type: 'circle',
+    paint: {
+      'circle-color': '#ffa500',
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 10, 7],
+      'circle-opacity': 0.8,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 0.5,
+    },
+    popupLabel: (p) => `${p.NAME || 'Substation'} — ${p.MAX_VOLT || '?'}kV`,
+  },
+  power_plants: {
+    label: 'Power Plants',
+    type: 'circle',
+    paint: {
+      'circle-color': [
+        'match', ['get', 'TYPE'],
+        'NATURAL GAS', '#c084fc',
+        'NUCLEAR', '#f43f5e',
+        'COAL', '#78716c',
+        'HYDRO', '#38bdf8',
+        'WIND', '#86efac',
+        'SOLAR', '#fde68a',
+        '#c084fc',
+      ],
+      'circle-radius': [
+        'interpolate', ['linear'], ['coalesce', ['get', 'TOTAL_MW'], 100],
+        50, 3, 500, 6, 2000, 10, 10000, 16,
+      ],
+      'circle-opacity': 0.85,
+      'circle-stroke-color': '#000',
+      'circle-stroke-width': 0.5,
+    },
+    popupLabel: (p) => `${p.NAME || 'Plant'} — ${p.TYPE || '?'} — ${p.TOTAL_MW ? Math.round(p.TOTAL_MW) + ' MW' : ''}`,
+  },
+  gas_pipelines: {
+    label: 'Natural Gas Pipelines',
+    type: 'line',
+    paint: {
+      'line-color': '#22d3ee',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 8, 1.8],
+      'line-opacity': 0.65,
+      'line-dasharray': [3, 2],
+    },
+    popupLabel: (p) => `${p.Operator || 'Gas Pipeline'} — ${p.Type || ''}`.trim(),
+  },
+  known_sites: {
+    label: 'Known Data Centers',
+    type: 'circle',
+    paint: {
+      'circle-color': '#ff3b30',
+      'circle-radius': 7,
+      'circle-opacity': 1,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+    popupLabel: (p) => `${p.company || p.name || 'Data Center'} — ${p.status || ''}`,
+  },
+  land_acquisitions: {
+    label: 'Flagged Acquisitions',
+    type: 'circle',
+    paint: {
+      'circle-color': '#f59e0b',
+      'circle-radius': 8,
+      'circle-opacity': 0.9,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+    popupLabel: (p) => `${p.buyer || 'Unknown buyer'} → ${p.resolved_parent || '?'} (conf ${p.confidence || '?'}%)`,
+  },
+  ferc_flags: {
+    label: 'FERC Queue Flags',
+    type: 'circle',
+    paint: {
+      'circle-color': '#34d399',
+      'circle-radius': 7,
+      'circle-opacity': 0.9,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+    popupLabel: (p) => `FERC: ${p.project_name || p.applicant || 'Queue entry'} — ${p.mw || '?'} MW`,
+  },
+};
+
+let map, popup, overlayPopup;
 let allFeatures = [];
 let activeTiers = new Set(['CRITICAL', 'HIGH', 'MODERATE', 'LOW']);
 let colorMode = 'tier';
+// Track which overlays are loaded (data fetched) and visible
+const overlayState = {};
+
+// ── Data loading ──────────────────────────────────────────────────────────────
 
 async function loadData() {
   const [riskResp, statsResp] = await Promise.all([
@@ -42,6 +144,23 @@ async function loadData() {
   const stats   = statsResp.ok ? await statsResp.json() : null;
   return { geojson, stats };
 }
+
+async function fetchOverlay(name) {
+  // Try overlays/ subfolder first, then root data/
+  const paths = [
+    `data/overlays/${name}.geojson`,
+    `data/${name}.geojson`,
+  ];
+  for (const path of paths) {
+    try {
+      const resp = await fetch(path);
+      if (resp.ok) return await resp.json();
+    } catch (_) { /* try next */ }
+  }
+  return null;
+}
+
+// ── Tribal layer color + filter ───────────────────────────────────────────────
 
 function tierFillColor() {
   return ['match', ['get', 'risk_tier'],
@@ -91,6 +210,70 @@ function applyColor() {
   renderLegend();
 }
 
+// ── Overlay layer management ──────────────────────────────────────────────────
+
+async function toggleOverlay(name, visible) {
+  const cfg = OVERLAY_CONFIG[name];
+  if (!cfg) return;
+
+  const sourceId = `overlay-${name}`;
+  const layerId  = `overlay-${name}-layer`;
+  const statusEl = document.getElementById(`status-${name}`);
+
+  if (!visible) {
+    if (map.getLayer(layerId)) map.setLayoutProperty(layerId, 'visibility', 'none');
+    return;
+  }
+
+  // First time: load data and add source+layer
+  if (!map.getSource(sourceId)) {
+    if (statusEl) statusEl.textContent = '…';
+    const geojson = await fetchOverlay(name);
+
+    if (!geojson || !geojson.features || geojson.features.length === 0) {
+      if (statusEl) statusEl.textContent = 'N/A';
+      // Uncheck the checkbox since data isn't available
+      const cb = document.querySelector(`.overlay-cb[value="${name}"]`);
+      if (cb) cb.checked = false;
+      return;
+    }
+
+    map.addSource(sourceId, { type: 'geojson', data: geojson });
+
+    const layerDef = {
+      id: layerId,
+      type: cfg.type,
+      source: sourceId,
+      paint: cfg.paint,
+    };
+    // Insert overlay layers below tribal fill so tribal lands stay on top
+    map.addLayer(layerDef, 'tribal-fill');
+
+    // Hover popup for overlay features
+    map.on('mouseenter', layerId, (e) => {
+      if (!e.features.length) return;
+      map.getCanvas().style.cursor = 'pointer';
+      const p = e.features[0].properties;
+      const label = cfg.popupLabel ? cfg.popupLabel(p) : name;
+      overlayPopup.setLngLat(e.lngLat)
+        .setHTML(`<div class="overlay-popup-label">${label}</div>`)
+        .addTo(map);
+    });
+    map.on('mouseleave', layerId, () => {
+      map.getCanvas().style.cursor = '';
+      overlayPopup.remove();
+    });
+
+    const n = geojson.features.length;
+    if (statusEl) statusEl.textContent = n.toLocaleString();
+    overlayState[name] = { loaded: true, count: n };
+  } else {
+    map.setLayoutProperty(layerId, 'visibility', 'visible');
+  }
+}
+
+// ── UI rendering ──────────────────────────────────────────────────────────────
+
 function renderLegend() {
   const el = document.getElementById('legend');
   if (colorMode === 'tier') {
@@ -132,6 +315,8 @@ function renderTierCounts(features) {
   });
 }
 
+// ── Detail panel ──────────────────────────────────────────────────────────────
+
 function fmtScore(v) {
   if (v == null) return '—';
   return Number(v).toFixed(3);
@@ -159,6 +344,31 @@ function showDetail(props) {
     </div>`;
   }
 
+  // Impact metrics (if available from impact_metrics run)
+  let impactHtml = '';
+  if (props.water_annual_millions) {
+    impactHtml = `
+    <div class="score-section-title">Projected impacts (single hyperscale DC)</div>
+    <div class="impact-grid">
+      <div class="impact-card">
+        <div class="impact-val">${props.water_annual_millions}M</div>
+        <div class="impact-label">gal/yr water</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-val">${props.jobs_permanent_actual || 3}</div>
+        <div class="impact-label">permanent jobs</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-val">+${props.elec_rate_increase_low_pct || 50}–${props.elec_rate_increase_high_pct || 267}%</div>
+        <div class="impact-label">elec rate increase</div>
+      </div>
+      <div class="impact-card">
+        <div class="impact-val">${props.heat_island_max_f || 16}°F</div>
+        <div class="impact-label">heat island</div>
+      </div>
+    </div>`;
+  }
+
   function barRow(item, value) {
     const r = fmtRaw(value, item.max);
     if (r === '—') return '';
@@ -169,7 +379,7 @@ function showDetail(props) {
       <div class="score-bar-track">
         <div class="score-bar-fill ${fillClass}" style="width:${r.pct}%"></div>
       </div>
-      <span class="score-bar-num">${isPenalty && r.val < 0 ? r.val : r.val}</span>
+      <span class="score-bar-num">${r.val}</span>
     </div>`;
   }
 
@@ -204,6 +414,8 @@ function showDetail(props) {
       </div>
     </div>
 
+    ${impactHtml}
+
     <div class="score-section-title">Corporate attractiveness factors</div>
     ${corpRows}
 
@@ -212,6 +424,8 @@ function showDetail(props) {
 
   panel.classList.remove('hidden');
 }
+
+// ── Map initialization ────────────────────────────────────────────────────────
 
 function initMap(geojson) {
   map = new maplibregl.Map({
@@ -239,6 +453,14 @@ function initMap(geojson) {
     closeOnClick: false,
     offset: 4,
     maxWidth: '240px',
+  });
+
+  overlayPopup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 4,
+    maxWidth: '280px',
+    className: 'overlay-popup',
   });
 
   map.on('load', () => {
@@ -309,8 +531,14 @@ function initMap(geojson) {
     });
 
     document.getElementById('loading').classList.add('hidden');
+
+    // Auto-load known_sites (checked by default)
+    const defaultOn = document.querySelectorAll('.overlay-cb:checked');
+    defaultOn.forEach(cb => toggleOverlay(cb.value, true));
   });
 }
+
+// ── Sidebar wiring ────────────────────────────────────────────────────────────
 
 function wireSidebar() {
   document.querySelectorAll('.tier-cb').forEach(cb => {
@@ -328,10 +556,18 @@ function wireSidebar() {
     });
   });
 
+  document.querySelectorAll('.overlay-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      toggleOverlay(cb.value, cb.checked);
+    });
+  });
+
   document.getElementById('detail-close').addEventListener('click', () => {
     document.getElementById('detail-panel').classList.add('hidden');
   });
 }
+
+// ── Entry point ───────────────────────────────────────────────────────────────
 
 async function main() {
   try {

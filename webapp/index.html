@@ -78,6 +78,61 @@
       </section>
 
       <section class="panel-section">
+        <h3>Data Layers</h3>
+        <div id="overlay-layers">
+
+          <div class="layer-group-label">Power Grid</div>
+          <label class="overlay-row" data-layer="transmission_lines">
+            <input type="checkbox" class="overlay-cb" value="transmission_lines" />
+            <span class="overlay-swatch" style="background:#f0c040"></span>
+            <span class="overlay-label">Transmission Lines</span>
+            <span class="overlay-status" id="status-transmission_lines"></span>
+          </label>
+          <label class="overlay-row" data-layer="substations">
+            <input type="checkbox" class="overlay-cb" value="substations" />
+            <span class="overlay-swatch" style="background:#ffa500"></span>
+            <span class="overlay-label">Substations</span>
+            <span class="overlay-status" id="status-substations"></span>
+          </label>
+          <label class="overlay-row" data-layer="power_plants">
+            <input type="checkbox" class="overlay-cb" value="power_plants" />
+            <span class="overlay-swatch" style="background:#c084fc"></span>
+            <span class="overlay-label">Power Plants</span>
+            <span class="overlay-status" id="status-power_plants"></span>
+          </label>
+
+          <div class="layer-group-label" style="margin-top:8px">Pipelines</div>
+          <label class="overlay-row" data-layer="gas_pipelines">
+            <input type="checkbox" class="overlay-cb" value="gas_pipelines" />
+            <span class="overlay-swatch" style="background:#22d3ee"></span>
+            <span class="overlay-label">Natural Gas Pipelines</span>
+            <span class="overlay-status" id="status-gas_pipelines"></span>
+          </label>
+
+          <div class="layer-group-label" style="margin-top:8px">Intelligence</div>
+          <label class="overlay-row" data-layer="known_sites">
+            <input type="checkbox" class="overlay-cb" value="known_sites" checked />
+            <span class="overlay-swatch" style="background:#ff3b30;border-radius:50%"></span>
+            <span class="overlay-label">Known Data Centers</span>
+            <span class="overlay-status" id="status-known_sites"></span>
+          </label>
+          <label class="overlay-row" data-layer="land_acquisitions">
+            <input type="checkbox" class="overlay-cb" value="land_acquisitions" />
+            <span class="overlay-swatch" style="background:#f59e0b;border-radius:50%"></span>
+            <span class="overlay-label">Flagged Acquisitions</span>
+            <span class="overlay-status" id="status-land_acquisitions"></span>
+          </label>
+          <label class="overlay-row" data-layer="ferc_flags">
+            <input type="checkbox" class="overlay-cb" value="ferc_flags" />
+            <span class="overlay-swatch" style="background:#34d399;border-radius:50%"></span>
+            <span class="overlay-label">FERC Queue Flags</span>
+            <span class="overlay-status" id="status-ferc_flags"></span>
+          </label>
+
+        </div>
+      </section>
+
+      <section class="panel-section">
         <h3>Legend</h3>
         <div id="legend"></div>
       </section>

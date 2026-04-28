@@ -263,6 +263,58 @@ header {
 }
 .hidden { display: none !important; }
 
+/* ── Overlay layer controls ── */
+.layer-group-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 4px; margin-top: 4px;
+}
+.overlay-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 0; cursor: pointer; font-size: 12px; color: var(--text);
+}
+.overlay-row input { cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+.overlay-swatch {
+  width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
+}
+.overlay-label { flex: 1; }
+.overlay-status {
+  font-size: 9px; color: var(--muted);
+  background: var(--bg); border-radius: 8px;
+  padding: 1px 5px; border: 1px solid var(--border);
+  min-width: 20px; text-align: center;
+}
+
+/* Overlay popup */
+.overlay-popup .maplibregl-popup-content {
+  background: rgba(22,27,34,0.97);
+  color: var(--text);
+  border: 1px solid rgba(88,166,255,0.4);
+  border-radius: 6px; padding: 8px 12px;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 11px; max-width: 280px;
+}
+.overlay-popup-label { font-size: 12px; line-height: 1.4; }
+
+/* ── Impact metrics grid ── */
+.impact-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px; margin-bottom: 14px;
+}
+.impact-card {
+  background: rgba(255,107,53,0.08);
+  border: 1px solid rgba(255,107,53,0.2);
+  border-radius: 6px; padding: 7px 10px; text-align: center;
+}
+.impact-val {
+  font-size: 14px; font-weight: 700;
+  color: var(--c-high); line-height: 1.2;
+}
+.impact-label {
+  font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

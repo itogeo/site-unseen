@@ -1,0 +1,31 @@
+name: Weekly Ownership Watchdog
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Run intelligence layer
+        run: |
+          python intelligence/subsidiaries.py
+          python intelligence/ferc_monitor.py
+          python intelligence/ownership_watch.py
+          python intelligence/impact_metrics.py
+        env:
+          CENSUS_API_KEY: ${{ secrets.CENSUS_API_KEY }}
+          OPENCORPORATES_API_KEY: ${{ secrets.OPENCORPORATES_API_KEY }}
+      - name: Commit outputs
+        run: |
+          git config user.email "sentinel@honorearth.org"
+          git config user.name "Watchdog Bot"
+          git add output/ webapp/data/
+          git diff --staged --quiet || (git commit -m "Watchdog scan $(date +%Y-%m-%d)" && git push)
