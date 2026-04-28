@@ -4,14 +4,12 @@ Downloads national infrastructure overlay datasets for the Site Unseen webapp.
 
 Sources:
   - HIFLD (confirmed in catalog):  transmission_lines, wind_turbines
-  - OpenStreetMap Overpass API:    power_plants, substations, gas_pipelines
-
-HIFLD services catalog confirms only Electric_Power_Transmission_Lines and
-US_Wind_Turbines are available for US energy infrastructure. Substations and
-Power_Plants are not in the HIFLD catalog — Overpass provides reliable fallback.
+  - OpenStreetMap Overpass API:    power_plants, substations, gas_pipelines,
+                                   fiber_optic, railways, highways
+  - Hardcoded:                     ixp_locations (major US internet exchanges)
 
 Run after: pipeline/00_download_data.py
-Output: data/raw/overlays/{transmission_lines,substations,power_plants,gas_pipelines,wind_turbines}.geojson
+Output: data/raw/overlays/{layer}.geojson
 
 Usage:
   python pipeline/06_download_overlays.py
@@ -238,6 +236,94 @@ out geom tags;
     return fc
 
 
+def fetch_fiber_overpass() -> dict:
+    """Long-haul fiber optic backbone cables from OSM."""
+    print(f"\n[overpass] fiber_optic")
+    query = f"""
+[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
+way["telecom"="cable"];
+out geom tags;
+"""
+    elements = _overpass_post(query, "US fiber backbone cables")
+    print(f"  Raw elements: {len(elements)}")
+    fc = _elements_to_geojson(elements)
+    for feat in fc["features"]:
+        p = feat["properties"]
+        p.setdefault("OWNER", p.get("operator", p.get("owner", "")))
+        p.setdefault("CABLE_TYPE", p.get("telecom", "fiber"))
+    print(f"  Features: {len(fc['features'])}")
+    return fc
+
+
+def fetch_railways_overpass() -> dict:
+    """Main line and light rail from OSM."""
+    print(f"\n[overpass] railways")
+    query = f"""
+[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
+way["railway"~"^(rail|light_rail)$"];
+out geom tags;
+"""
+    elements = _overpass_post(query, "US railways")
+    print(f"  Raw elements: {len(elements)}")
+    fc = _elements_to_geojson(elements)
+    for feat in fc["features"]:
+        p = feat["properties"]
+        p.setdefault("OPERATOR", p.get("operator", ""))
+        p.setdefault("TYPE", p.get("railway", "rail"))
+    print(f"  Features: {len(fc['features'])}")
+    return fc
+
+
+def fetch_highways_overpass() -> dict:
+    """Interstate highways (motorways) from OSM."""
+    print(f"\n[overpass] highways")
+    query = f"""
+[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
+way["highway"="motorway"];
+out geom tags;
+"""
+    elements = _overpass_post(query, "US motorways")
+    print(f"  Raw elements: {len(elements)}")
+    fc = _elements_to_geojson(elements)
+    for feat in fc["features"]:
+        p = feat["properties"]
+        p.setdefault("REF", p.get("ref", ""))
+        p.setdefault("NAME", p.get("name", ""))
+    print(f"  Features: {len(fc['features'])}")
+    return fc
+
+
+def create_ixp_geojson() -> dict:
+    """Major US internet exchange point colocation campuses (hardcoded)."""
+    print(f"\n[hardcoded] ixp_locations")
+    IXP_LOCATIONS = [
+        {"name": "Equinix Ashburn (IAD)",   "city": "Ashburn",     "state": "VA", "lon": -77.487,  "lat": 39.043},
+        {"name": "DE-CIX New York",          "city": "New York",    "state": "NY", "lon": -74.006,  "lat": 40.713},
+        {"name": "Equinix Chicago (CH)",     "city": "Chicago",     "state": "IL", "lon": -87.629,  "lat": 41.878},
+        {"name": "Equinix Dallas (DA)",      "city": "Dallas",      "state": "TX", "lon": -96.797,  "lat": 32.776},
+        {"name": "Equinix San Jose (SV)",    "city": "San Jose",    "state": "CA", "lon": -121.886, "lat": 37.338},
+        {"name": "Equinix Los Angeles (LA)", "city": "Los Angeles", "state": "CA", "lon": -118.244, "lat": 34.052},
+        {"name": "Equinix Atlanta (AT)",     "city": "Atlanta",     "state": "GA", "lon": -84.388,  "lat": 33.749},
+        {"name": "Equinix Seattle (SE)",     "city": "Seattle",     "state": "WA", "lon": -122.335, "lat": 47.608},
+        {"name": "CoreSite Denver (DE1)",    "city": "Denver",      "state": "CO", "lon": -104.990, "lat": 39.739},
+        {"name": "Equinix Miami (MI)",       "city": "Miami",       "state": "FL", "lon": -80.197,  "lat": 25.775},
+        {"name": "Equinix Boston (BO)",      "city": "Boston",      "state": "MA", "lon": -71.059,  "lat": 42.360},
+        {"name": "PhoenixNAP",               "city": "Phoenix",     "state": "AZ", "lon": -112.074, "lat": 33.449},
+        {"name": "Corelink Minneapolis",     "city": "Minneapolis", "state": "MN", "lon": -93.265,  "lat": 44.977},
+        {"name": "Equinix Portland (PD)",    "city": "Portland",    "state": "OR", "lon": -122.676, "lat": 45.523},
+    ]
+    features = [
+        {
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [ixp["lon"], ixp["lat"]]},
+            "properties": {k: v for k, v in ixp.items() if k not in ("lon", "lat")},
+        }
+        for ixp in IXP_LOCATIONS
+    ]
+    print(f"  Features: {len(features)}")
+    return {"type": "FeatureCollection", "features": features}
+
+
 # ── Download dispatch ─────────────────────────────────────────────────────────
 
 LAYER_FETCHERS = {
@@ -246,9 +332,16 @@ LAYER_FETCHERS = {
     "power_plants":       fetch_power_plants_overpass,
     "substations":        fetch_substations_overpass,
     "gas_pipelines":      fetch_gas_pipelines_overpass,
+    "fiber_optic":        fetch_fiber_overpass,
+    "railways":           fetch_railways_overpass,
+    "highways":           fetch_highways_overpass,
+    "ixp_locations":      create_ixp_geojson,
 }
 
-DEFAULT_LAYERS = ["transmission_lines", "wind_turbines", "power_plants", "substations", "gas_pipelines"]
+DEFAULT_LAYERS = [
+    "transmission_lines", "wind_turbines", "power_plants", "substations", "gas_pipelines",
+    "fiber_optic", "railways", "highways", "ixp_locations",
+]
 
 
 def main() -> None:

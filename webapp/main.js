@@ -22,10 +22,12 @@ const SCORE_LABELS = [
   { key: 'score_aquifer',         label: 'Aquifer access',      type: 'infra',   max: 10 },
   { key: 'score_land_area',       label: 'Land area',           type: 'infra',   max: 15 },
   { key: 'score_terrain',         label: 'Terrain flatness',    type: 'infra',   max: 10 },
-  { key: 'score_fiber_proximity', label: 'Fiber backbone',      type: 'infra',   max: 10 },
-  { key: 'score_power_cost',      label: 'Power cost (state)',  type: 'infra',   max: 15 },
-  { key: 'score_opp_zone',        label: 'Opportunity zone',    type: 'infra',   max: 5  },
-  { key: 'score_flood_penalty',   label: 'Flood risk',          type: 'penalty', max: 10 },
+  { key: 'score_fiber_proximity',    label: 'Fiber backbone',       type: 'infra',   max: 10 },
+  { key: 'score_power_cost',         label: 'Power cost (state)',   type: 'infra',   max: 15 },
+  { key: 'score_highway_proximity',  label: 'Highway access',       type: 'infra',   max: 10 },
+  { key: 'score_ixp_proximity',      label: 'IXP hub proximity',    type: 'infra',   max: 15 },
+  { key: 'score_opp_zone',           label: 'Opportunity zone',     type: 'infra',   max: 5  },
+  { key: 'score_flood_penalty',      label: 'Flood risk',           type: 'penalty', max: 10 },
 ];
 
 // ── Icon generation for market-signal symbol layers ────────────────────────────
@@ -157,6 +159,42 @@ const OVERLAY_CONFIG = {
       'line-opacity': 0.65,
     },
     popupLabel: (p) => `${p.OWNER || p.CABLE_TYPE || 'Fiber Backbone'}`.trim(),
+  },
+  railways: {
+    label: 'Railways',
+    belowTribal: true,
+    type: 'line',
+    paint: {
+      'line-color': '#f97316',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 8, 1.5],
+      'line-opacity': 0.6,
+      'line-dasharray': [6, 2],
+    },
+    popupLabel: (p) => `${p.OPERATOR || 'Railway'} — ${p.TYPE || 'rail'}`.trim(),
+  },
+  highways: {
+    label: 'Highways (Interstate)',
+    belowTribal: true,
+    type: 'line',
+    paint: {
+      'line-color': '#e2e8f0',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 8, 2],
+      'line-opacity': 0.45,
+    },
+    popupLabel: (p) => `${p.REF ? 'I-' + p.REF : p.NAME || 'Interstate'}`.trim(),
+  },
+  ixp_locations: {
+    label: 'IXP Hubs',
+    belowTribal: true,
+    type: 'circle',
+    paint: {
+      'circle-color': '#e879f9',
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 3, 4, 8, 9],
+      'circle-opacity': 0.9,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 1.5,
+    },
+    popupLabel: (p) => `${p.name || 'IXP'} — ${p.city || ''}, ${p.state || ''}`.trim(),
   },
 
   // ── Market signal layers — rendered above tribal fill ──────────────────────

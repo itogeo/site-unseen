@@ -84,6 +84,10 @@ def _get_keep_cols(name: str, available: list) -> list:
         "transmission_lines": ["VOLTAGE", "TYPE", "STATUS", "OWNER"],
         "gas_pipelines":      ["Operator", "Type"],
         "wind_turbines":      ["p_name", "t_state", "t_county", "t_cap", "p_year"],
+        "fiber_optic":        ["OWNER", "CABLE_TYPE"],
+        "railways":           ["OPERATOR", "TYPE"],
+        "highways":           ["REF", "NAME"],
+        "ixp_locations":      ["name", "city", "state"],
     }
     desired = wanted.get(name, [])
     return [c for c in desired if c in available]
@@ -115,6 +119,10 @@ def main() -> None:
     clip_and_export("transmission_lines",  buffer_gdf, simplify=True)
     clip_and_export("gas_pipelines",       buffer_gdf, simplify=True)
     clip_and_export("wind_turbines",       buffer_gdf, simplify=False)  # points
+    clip_and_export("fiber_optic",         buffer_gdf, simplify=True)
+    clip_and_export("railways",            buffer_gdf, simplify=True)
+    clip_and_export("highways",            buffer_gdf, simplify=True)
+    clip_and_export("ixp_locations",       buffer_gdf, simplify=False)  # points, few
 
     export_known_sites()
 

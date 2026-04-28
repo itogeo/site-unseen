@@ -11,9 +11,11 @@ Scoring dimensions:
   - Terrain flatness                  (0-10 pts)
   - Fiber backbone proximity          (0-10 pts)
   - Power cost (state commercial avg) (0-15 pts)
+  - Highway (motorway) proximity      (0-10 pts)
+  - IXP colocation hub proximity      (0-15 pts)
   - Opportunity Zone overlap          (0-5 pts)
   - Flood risk penalty                (0 to -10 pts)
-  Max raw score: ~120 pts -> normalized 0-1
+  Max raw score: ~145 pts -> normalized 0-1
 """
 
 import geopandas as gpd
@@ -174,8 +176,12 @@ def score_fiber_proximity(tribal: gpd.GeoDataFrame) -> pd.Series:
     Distance to nearest long-haul fiber optic backbone cable.
     Score: 10 pts at 0km, 0 pts at 100km
     """
-    shp = (next((RAW / "fiber_optic").glob("*.geojson"), None) or
-           next((RAW / "fiber_optic").glob("*.shp"), None))
+    candidates = [
+        RAW / "overlays" / "fiber_optic.geojson",
+        *list((RAW / "fiber_optic").glob("*.geojson")),
+        *list((RAW / "fiber_optic").glob("*.shp")),
+    ]
+    shp = next((p for p in candidates if p.exists()), None)
     if shp is None:
         print("  [warn] Fiber optic data not found — scoring 0")
         return pd.Series(0, index=tribal.index).rename("score_fiber_proximity")
@@ -185,6 +191,53 @@ def score_fiber_proximity(tribal: gpd.GeoDataFrame) -> pd.Series:
     distances = tribal.geometry.centroid.distance(fiber_union) / 1000  # km
     scores = np.clip(10 * (1 - distances / 100), 0, 10)
     return scores.rename("score_fiber_proximity")
+
+
+def score_highway_proximity(tribal: gpd.GeoDataFrame) -> pd.Series:
+    """
+    Distance to nearest interstate highway (motorway).
+    Score: 10 pts at 0km, 0 pts at 100km. Proxy for logistics / construction access.
+    """
+    candidates = [
+        RAW / "overlays" / "highways.geojson",
+        *list((RAW / "highways").glob("*.geojson")),
+        *list((RAW / "highways").glob("*.shp")),
+    ]
+    shp = next((p for p in candidates if p.exists()), None)
+    if shp is None:
+        print("  [warn] Highways data not found — scoring 0")
+        return pd.Series(0, index=tribal.index).rename("score_highway_proximity")
+
+    hw = gpd.read_file(shp).to_crs(WORKING_CRS)
+    hw_union = hw.geometry.unary_union
+    distances = tribal.geometry.centroid.distance(hw_union) / 1000  # km
+    scores = np.clip(10 * (1 - distances / 100), 0, 10)
+    return scores.rename("score_highway_proximity")
+
+
+def score_ixp_proximity(tribal: gpd.GeoDataFrame) -> pd.Series:
+    """
+    Distance to nearest major US internet exchange point.
+    Score: 15 pts within 500km, decaying to 0 at 2500km.
+    """
+    import shapely.geometry as sg
+    IXP_COORDS = [
+        (-77.487, 39.043), (-74.006, 40.713), (-87.629, 41.878),
+        (-96.797, 32.776), (-121.886, 37.338), (-118.244, 34.052),
+        (-84.388, 33.749), (-122.335, 47.608), (-104.990, 39.739),
+        (-80.197, 25.775), (-71.059, 42.360), (-112.074, 33.449),
+        (-93.265, 44.977), (-122.676, 45.523),
+    ]
+    ixp_gdf = gpd.GeoDataFrame(
+        geometry=[sg.Point(lon, lat) for lon, lat in IXP_COORDS],
+        crs="EPSG:4326",
+    ).to_crs(WORKING_CRS)
+    ixp_union = ixp_gdf.geometry.unary_union
+
+    centroids = tribal.geometry.centroid
+    distances = centroids.distance(ixp_union) / 1000  # km
+    scores = np.clip(15 * (1 - distances / 2500), 0, 15)
+    return scores.rename("score_ixp_proximity")
 
 
 def score_power_cost(tribal: gpd.GeoDataFrame) -> pd.Series:
@@ -356,6 +409,12 @@ def combine_infrastructure_scores(tribal: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     print("Scoring power cost by state...")
     tribal["score_power_cost"]        = score_power_cost(tribal).values
 
+    print("Scoring highway proximity...")
+    tribal["score_highway_proximity"] = score_highway_proximity(tribal).values
+
+    print("Scoring IXP colocation hub proximity...")
+    tribal["score_ixp_proximity"]     = score_ixp_proximity(tribal).values
+
     print("Scoring flood risk penalty...")
     tribal["score_flood_penalty"]     = score_flood_risk_penalty(tribal).values
 
@@ -366,7 +425,8 @@ def combine_infrastructure_scores(tribal: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
         "score_transmission", "score_substation", "score_water",
         "score_aquifer", "score_land_area", "score_terrain",
         "score_fiber_proximity", "score_power_cost",
-        "score_flood_penalty", "score_opp_zone"
+        "score_highway_proximity", "score_ixp_proximity",
+        "score_flood_penalty", "score_opp_zone",
     ]
     tribal["corp_score_raw"] = tribal[score_cols].sum(axis=1)
 
