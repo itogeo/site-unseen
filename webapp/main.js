@@ -124,16 +124,20 @@ const OVERLAY_CONFIG = {
     popupLabel: (p) => `${p.buyer || 'Unknown buyer'} → ${p.resolved_parent || '?'} (conf ${p.confidence || '?'}%)`,
   },
   ferc_flags: {
-    label: 'FERC Queue Flags',
+    label: 'Grid Expansion Flags',
     type: 'circle',
     paint: {
       'circle-color': '#34d399',
-      'circle-radius': 7,
-      'circle-opacity': 0.9,
+      'circle-radius': [
+        'interpolate', ['linear'],
+        ['coalesce', ['get', 'mw'], 100],
+        50, 5, 500, 10, 2000, 16,
+      ],
+      'circle-opacity': 0.85,
       'circle-stroke-color': '#fff',
       'circle-stroke-width': 1.5,
     },
-    popupLabel: (p) => `FERC: ${p.project_name || p.applicant || 'Queue entry'} — ${p.mw || '?'} MW`,
+    popupLabel: (p) => `${p.project_name || p.applicant || 'Grid project'} — ${p.mw ? Math.round(p.mw) + ' MW' : '?'} (${p.status || ''})`,
   },
 };
 
