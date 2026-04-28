@@ -79,10 +79,11 @@ def clip_and_export(name: str, buffer_gdf: gpd.GeoDataFrame, simplify: bool = Tr
 def _get_keep_cols(name: str, available: list) -> list:
     """Return a minimal set of columns relevant to each layer."""
     wanted = {
-        "power_plants": ["NAME", "TYPE", "TOTAL_MW", "STATE", "STATUS"],
-        "substations":  ["NAME", "TYPE", "MAX_VOLT", "STATE", "STATUS"],
+        "power_plants":       ["NAME", "TYPE", "TOTAL_MW", "STATE", "STATUS"],
+        "substations":        ["NAME", "TYPE", "MAX_VOLT", "STATE", "STATUS"],
         "transmission_lines": ["VOLTAGE", "TYPE", "STATUS", "OWNER"],
-        "gas_pipelines": ["Operator", "Type"],
+        "gas_pipelines":      ["Operator", "Type"],
+        "wind_turbines":      ["p_name", "t_state", "t_county", "t_cap", "p_year"],
     }
     desired = wanted.get(name, [])
     return [c for c in desired if c in available]
@@ -113,6 +114,7 @@ def main() -> None:
     clip_and_export("substations",         buffer_gdf, simplify=False)  # points
     clip_and_export("transmission_lines",  buffer_gdf, simplify=True)
     clip_and_export("gas_pipelines",       buffer_gdf, simplify=True)
+    clip_and_export("wind_turbines",       buffer_gdf, simplify=False)  # points
 
     export_known_sites()
 

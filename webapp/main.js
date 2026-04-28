@@ -76,6 +76,18 @@ const OVERLAY_CONFIG = {
     },
     popupLabel: (p) => `${p.NAME || 'Plant'} — ${p.TYPE || '?'} — ${p.TOTAL_MW ? Math.round(p.TOTAL_MW) + ' MW' : ''}`,
   },
+  wind_turbines: {
+    label: 'Wind Turbines',
+    type: 'circle',
+    paint: {
+      'circle-color': '#6ee7b7',
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 5],
+      'circle-opacity': 0.8,
+      'circle-stroke-color': '#fff',
+      'circle-stroke-width': 0.5,
+    },
+    popupLabel: (p) => `${p.p_name || 'Wind Turbine'}${p.t_cap ? ' — ' + p.t_cap + ' kW' : ''}${p.p_year ? ' (' + p.p_year + ')' : ''}`,
+  },
   gas_pipelines: {
     label: 'Natural Gas Pipelines',
     type: 'line',
