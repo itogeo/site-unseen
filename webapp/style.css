@@ -277,6 +277,22 @@ header {
 .overlay-swatch {
   width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0;
 }
+.swatch-square {
+  border-radius: 2px;
+}
+.swatch-triangle {
+  background: transparent !important;
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 10px solid var(--sw-color, #f59e0b);
+}
+.swatch-diamond {
+  background: var(--sw-color, #34d399) !important;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  width: 8px; height: 8px;
+}
 .overlay-label { flex: 1; }
 .overlay-status {
   font-size: 9px; color: var(--muted);

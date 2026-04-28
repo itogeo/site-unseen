@@ -9,61 +9,108 @@ const TIER_COLORS = {
 
 const SCORE_LABELS = {
   corp: [
-    { key: 'score_transmission',  label: 'Transmission lines',  type: 'corp', max: 20 },
-    { key: 'score_substation',    label: 'Substation proximity', type: 'corp', max: 15 },
-    { key: 'score_water',         label: 'Water availability',  type: 'corp', max: 20 },
-    { key: 'score_aquifer',       label: 'Aquifer access',      type: 'corp', max: 10 },
-    { key: 'score_land_area',     label: 'Land area',           type: 'corp', max: 15 },
-    { key: 'score_terrain',       label: 'Terrain flatness',    type: 'corp', max: 10 },
-    { key: 'score_opp_zone',      label: 'Opportunity zone',    type: 'corp', max: 5  },
-    { key: 'score_flood_penalty', label: 'Flood risk',          type: 'penalty', max: 10 },
+    { key: 'score_transmission',  label: 'Transmission lines',   type: 'corp',    max: 20 },
+    { key: 'score_substation',    label: 'Substation proximity',  type: 'corp',    max: 15 },
+    { key: 'score_water',         label: 'Water availability',   type: 'corp',    max: 20 },
+    { key: 'score_aquifer',       label: 'Aquifer access',       type: 'corp',    max: 10 },
+    { key: 'score_land_area',     label: 'Land area',            type: 'corp',    max: 15 },
+    { key: 'score_terrain',       label: 'Terrain flatness',     type: 'corp',    max: 10 },
+    { key: 'score_opp_zone',      label: 'Opportunity zone',     type: 'corp',    max: 5  },
+    { key: 'score_flood_penalty', label: 'Flood risk',           type: 'penalty', max: 10 },
   ],
   vuln: [
-    { key: 'score_poverty',          label: 'Poverty rate',          type: 'vuln', max: 25 },
-    { key: 'score_ejscreen',         label: 'EJScreen burden',       type: 'vuln', max: 20 },
-    { key: 'score_sacrifice_history',label: 'Industry history',      type: 'vuln', max: 15 },
-    { key: 'score_remoteness',       label: 'Remoteness',            type: 'vuln', max: 10 },
-    { key: 'score_jurisdiction',     label: 'Jurisdictional fragility', type: 'vuln', max: 10 },
+    { key: 'score_poverty',           label: 'Poverty rate',             type: 'vuln', max: 25 },
+    { key: 'score_ejscreen',          label: 'EJScreen burden',          type: 'vuln', max: 20 },
+    { key: 'score_sacrifice_history', label: 'Industry history',         type: 'vuln', max: 15 },
+    { key: 'score_remoteness',        label: 'Remoteness',               type: 'vuln', max: 10 },
+    { key: 'score_jurisdiction',      label: 'Jurisdictional fragility', type: 'vuln', max: 10 },
   ],
 };
 
-// Overlay layer configuration — each entry defines how to render + label it
+// ── Icon generation for intelligence symbol layers ─────────────────────────────
+
+function makeIconImage(shape, color, size = 40) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const ctx = c.getContext('2d');
+  const p = 5;
+  const s = size - p * 2;
+  ctx.fillStyle = color;
+
+  if (shape === 'square') {
+    ctx.fillRect(p, p, s, s);
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(p + 1.25, p + 1.25, s - 2.5, s - 2.5);
+  } else if (shape === 'triangle') {
+    ctx.beginPath();
+    ctx.moveTo(size / 2, p);
+    ctx.lineTo(size - p, size - p);
+    ctx.lineTo(p, size - p);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  } else if (shape === 'diamond') {
+    ctx.beginPath();
+    ctx.moveTo(size / 2, p);
+    ctx.lineTo(size - p, size / 2);
+    ctx.lineTo(size / 2, size - p);
+    ctx.lineTo(p, size / 2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+  }
+
+  const d = ctx.getImageData(0, 0, size, size);
+  return { width: size, height: size, data: new Uint8Array(d.data.buffer) };
+}
+
+// ── Overlay layer configuration ────────────────────────────────────────────────
+// belowTribal: true  → rendered under tribal fill (infrastructure context)
+// aboveTribal: true  → rendered above tribal fill (clickable intelligence points)
+
 const OVERLAY_CONFIG = {
   transmission_lines: {
     label: 'Transmission Lines',
+    belowTribal: true,
     type: 'line',
     paint: {
       'line-color': '#f0c040',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 8, 2],
-      'line-opacity': 0.75,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 8, 2],
+      'line-opacity': 0.7,
     },
-    popupProp: 'VOLTAGE',
     popupLabel: (p) => `${p.VOLTAGE || '?'}kV — ${p.TYPE || ''} ${p.STATUS || ''}`.trim(),
   },
   substations: {
     label: 'Substations',
+    belowTribal: true,
     type: 'circle',
     paint: {
       'circle-color': '#ffa500',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 10, 7],
-      'circle-opacity': 0.8,
-      'circle-stroke-color': '#fff',
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2.5, 10, 6],
+      'circle-opacity': 0.85,
+      'circle-stroke-color': '#000',
       'circle-stroke-width': 0.5,
     },
     popupLabel: (p) => `${p.NAME || 'Substation'} — ${p.MAX_VOLT || '?'}kV`,
   },
   power_plants: {
     label: 'Power Plants',
+    belowTribal: true,
     type: 'circle',
     paint: {
       'circle-color': [
         'match', ['get', 'TYPE'],
         'NATURAL GAS', '#c084fc',
-        'NUCLEAR', '#f43f5e',
-        'COAL', '#78716c',
-        'HYDRO', '#38bdf8',
-        'WIND', '#86efac',
-        'SOLAR', '#fde68a',
+        'NUCLEAR',     '#f43f5e',
+        'COAL',        '#78716c',
+        'HYDRO',       '#38bdf8',
+        'WIND',        '#86efac',
+        'SOLAR',       '#fde68a',
         '#c084fc',
       ],
       'circle-radius': [
@@ -78,10 +125,11 @@ const OVERLAY_CONFIG = {
   },
   wind_turbines: {
     label: 'Wind Turbines',
+    belowTribal: true,
     type: 'circle',
     paint: {
       'circle-color': '#6ee7b7',
-      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 2, 10, 5],
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 1.5, 10, 4],
       'circle-opacity': 0.8,
       'circle-stroke-color': '#fff',
       'circle-stroke-width': 0.5,
@@ -90,65 +138,73 @@ const OVERLAY_CONFIG = {
   },
   gas_pipelines: {
     label: 'Natural Gas Pipelines',
+    belowTribal: true,
     type: 'line',
     paint: {
       'line-color': '#22d3ee',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 8, 1.8],
-      'line-opacity': 0.65,
-      'line-dasharray': [3, 2],
+      'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.5, 8, 1.8],
+      'line-opacity': 0.6,
+      'line-dasharray': [4, 2],
     },
     popupLabel: (p) => `${p.Operator || 'Gas Pipeline'} — ${p.Type || ''}`.trim(),
   },
+
+  // ── Intelligence layers — rendered above tribal fill ────────────────────────
   known_sites: {
     label: 'Known Data Centers',
-    type: 'circle',
-    paint: {
-      'circle-color': '#ff3b30',
-      'circle-radius': 7,
-      'circle-opacity': 1,
-      'circle-stroke-color': '#fff',
-      'circle-stroke-width': 1.5,
+    aboveTribal: true,
+    type: 'symbol',
+    layout: {
+      'icon-image': 'icon-dc',
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.45, 8, 0.85, 12, 1.1],
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
-    popupLabel: (p) => `${p.company || p.name || 'Data Center'} — ${p.status || ''}`,
+    paint: {},
+    popupLabel: (p) => `${p.company || p.name || 'Data Center'}${p.status ? ' — ' + p.status : ''}`,
   },
   land_acquisitions: {
     label: 'Flagged Acquisitions',
-    type: 'circle',
-    paint: {
-      'circle-color': '#f59e0b',
-      'circle-radius': 8,
-      'circle-opacity': 0.9,
-      'circle-stroke-color': '#fff',
-      'circle-stroke-width': 1.5,
+    aboveTribal: true,
+    type: 'symbol',
+    layout: {
+      'icon-image': 'icon-acq',
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 3, 0.4, 8, 0.75, 12, 1.0],
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
-    popupLabel: (p) => `${p.buyer || 'Unknown buyer'} → ${p.resolved_parent || '?'} (conf ${p.confidence || '?'}%)`,
+    paint: {},
+    popupLabel: (p) => `${p.buyer || 'Unknown'} — ${p.state || ''} (${p.confidence || '?'}% confidence, ${p.source || ''})`,
   },
   ferc_flags: {
     label: 'Grid Expansion Flags',
-    type: 'circle',
-    paint: {
-      'circle-color': '#34d399',
-      'circle-radius': [
+    aboveTribal: true,
+    type: 'symbol',
+    layout: {
+      'icon-image': 'icon-grid',
+      'icon-size': [
         'interpolate', ['linear'],
         ['coalesce', ['get', 'mw'], 100],
-        50, 5, 500, 10, 2000, 16,
+        50, 0.35, 300, 0.55, 1000, 0.75, 3000, 0.95,
       ],
-      'circle-opacity': 0.85,
-      'circle-stroke-color': '#fff',
-      'circle-stroke-width': 1.5,
+      'icon-allow-overlap': true,
+      'icon-ignore-placement': true,
     },
-    popupLabel: (p) => `${p.project_name || p.applicant || 'Grid project'} — ${p.mw ? Math.round(p.mw) + ' MW' : '?'} (${p.status || ''})`,
+    paint: {},
+    popupLabel: (p) => `${p.project_name || p.applicant || 'Grid project'} — ${p.mw ? Math.round(p.mw) + ' MW' : '?'} · ${p.status || ''} · ${p.county || ''} ${p.state || ''}`.trim().replace(/·\s*$/, ''),
   },
 };
+
+// Intelligence layer names for hover/click suppression
+const INTEL_LAYERS = ['known_sites', 'land_acquisitions', 'ferc_flags'];
 
 let map, popup, overlayPopup;
 let allFeatures = [];
 let activeTiers = new Set(['CRITICAL', 'HIGH', 'MODERATE', 'LOW']);
 let colorMode = 'tier';
-// Track which overlays are loaded (data fetched) and visible
 const overlayState = {};
 
-// ── Data loading ──────────────────────────────────────────────────────────────
+// ── Data loading ───────────────────────────────────────────────────────────────
 
 async function loadData() {
   const [riskResp, statsResp] = await Promise.all([
@@ -162,7 +218,6 @@ async function loadData() {
 }
 
 async function fetchOverlay(name) {
-  // Try overlays/ subfolder first, then root data/
   const paths = [
     `data/overlays/${name}.geojson`,
     `data/${name}.geojson`,
@@ -176,7 +231,7 @@ async function fetchOverlay(name) {
   return null;
 }
 
-// ── Tribal layer color + filter ───────────────────────────────────────────────
+// ── Tribal layer color + filter ────────────────────────────────────────────────
 
 function tierFillColor() {
   return ['match', ['get', 'risk_tier'],
@@ -189,12 +244,12 @@ function tierFillColor() {
 
 function scoreFillColor(field) {
   return ['interpolate', ['linear'], ['coalesce', ['get', field], 0],
-    0,   '#1a2035',
-    0.25,'#1e3a5f',
-    0.5, '#2d6a9f',
-    0.7, '#ffd166',
-    0.85,'#ff6b35',
-    1,   '#ff3b30',
+    0,    '#1a2035',
+    0.25, '#1e3a5f',
+    0.5,  '#2d6a9f',
+    0.7,  '#ffd166',
+    0.85, '#ff6b35',
+    1,    '#ff3b30',
   ];
 }
 
@@ -226,7 +281,7 @@ function applyColor() {
   renderLegend();
 }
 
-// ── Overlay layer management ──────────────────────────────────────────────────
+// ── Overlay layer management ───────────────────────────────────────────────────
 
 async function toggleOverlay(name, visible) {
   const cfg = OVERLAY_CONFIG[name];
@@ -241,14 +296,13 @@ async function toggleOverlay(name, visible) {
     return;
   }
 
-  // First time: load data and add source+layer
+  // First time: fetch data + add source/layer
   if (!map.getSource(sourceId)) {
     if (statusEl) statusEl.textContent = '…';
     const geojson = await fetchOverlay(name);
 
     if (!geojson || !geojson.features || geojson.features.length === 0) {
       if (statusEl) statusEl.textContent = 'N/A';
-      // Uncheck the checkbox since data isn't available
       const cb = document.querySelector(`.overlay-cb[value="${name}"]`);
       if (cb) cb.checked = false;
       return;
@@ -260,12 +314,14 @@ async function toggleOverlay(name, visible) {
       id: layerId,
       type: cfg.type,
       source: sourceId,
-      paint: cfg.paint,
+      paint: cfg.paint || {},
     };
-    // Insert overlay layers below tribal fill so tribal lands stay on top
-    map.addLayer(layerDef, 'tribal-fill');
+    if (cfg.layout) layerDef.layout = cfg.layout;
 
-    // Hover popup for overlay features
+    // Intelligence layers above tribal fill; infrastructure below
+    map.addLayer(layerDef, cfg.belowTribal ? 'tribal-fill' : undefined);
+
+    // Hover popup
     map.on('mouseenter', layerId, (e) => {
       if (!e.features.length) return;
       map.getCanvas().style.cursor = 'pointer';
@@ -280,6 +336,13 @@ async function toggleOverlay(name, visible) {
       overlayPopup.remove();
     });
 
+    // Above-tribal click handler: mark event so tribal-fill click is skipped
+    if (cfg.aboveTribal) {
+      map.on('click', layerId, (e) => {
+        if (e.features.length) e.originalEvent._overlayHandled = true;
+      });
+    }
+
     const n = geojson.features.length;
     if (statusEl) statusEl.textContent = n.toLocaleString();
     overlayState[name] = { loaded: true, count: n };
@@ -288,7 +351,7 @@ async function toggleOverlay(name, visible) {
   }
 }
 
-// ── UI rendering ──────────────────────────────────────────────────────────────
+// ── UI rendering ───────────────────────────────────────────────────────────────
 
 function renderLegend() {
   const el = document.getElementById('legend');
@@ -331,7 +394,7 @@ function renderTierCounts(features) {
   });
 }
 
-// ── Detail panel ──────────────────────────────────────────────────────────────
+// ── Detail panel ───────────────────────────────────────────────────────────────
 
 function fmtScore(v) {
   if (v == null) return '—';
@@ -360,7 +423,6 @@ function showDetail(props) {
     </div>`;
   }
 
-  // Impact metrics (if available from impact_metrics run)
   let impactHtml = '';
   if (props.water_annual_millions) {
     impactHtml = `
@@ -441,7 +503,7 @@ function showDetail(props) {
   panel.classList.remove('hidden');
 }
 
-// ── Map initialization ────────────────────────────────────────────────────────
+// ── Map initialization ─────────────────────────────────────────────────────────
 
 function initMap(geojson) {
   map = new maplibregl.Map({
@@ -475,15 +537,17 @@ function initMap(geojson) {
     closeButton: false,
     closeOnClick: false,
     offset: 4,
-    maxWidth: '280px',
+    maxWidth: '300px',
     className: 'overlay-popup',
   });
 
   map.on('load', () => {
-    map.addSource('tribal', {
-      type: 'geojson',
-      data: geojson,
-    });
+    // Register canvas icons for intelligence symbol layers (pixelRatio:2 for retina)
+    map.addImage('icon-dc',   makeIconImage('square',   '#ff3b30'), { pixelRatio: 2 });
+    map.addImage('icon-acq',  makeIconImage('triangle', '#f59e0b'), { pixelRatio: 2 });
+    map.addImage('icon-grid', makeIconImage('diamond',  '#34d399'), { pixelRatio: 2 });
+
+    map.addSource('tribal', { type: 'geojson', data: geojson });
 
     map.addLayer({
       id: 'tribal-fill',
@@ -491,7 +555,7 @@ function initMap(geojson) {
       source: 'tribal',
       paint: {
         'fill-color': buildFillColor(),
-        'fill-opacity': 0.72,
+        'fill-opacity': 0.68,
       },
     });
 
@@ -519,6 +583,14 @@ function initMap(geojson) {
 
     map.on('mousemove', 'tribal-fill', (e) => {
       if (!e.features.length) return;
+      // Suppress tribal hover when cursor is over an intelligence layer feature
+      const intelIds = INTEL_LAYERS.map(n => `overlay-${n}-layer`).filter(id => map.getLayer(id));
+      if (intelIds.length && map.queryRenderedFeatures(e.point, { layers: intelIds }).length) {
+        map.getCanvas().style.cursor = 'pointer';
+        popup.remove();
+        map.setFilter('tribal-fill-hover', ['==', ['get', 'geoid'], '']);
+        return;
+      }
       map.getCanvas().style.cursor = 'pointer';
       const props = e.features[0].properties;
       const tier = props.risk_tier;
@@ -542,19 +614,19 @@ function initMap(geojson) {
     });
 
     map.on('click', 'tribal-fill', (e) => {
+      if (e.originalEvent._overlayHandled) return;
       if (!e.features.length) return;
       showDetail(e.features[0].properties);
     });
 
     document.getElementById('loading').classList.add('hidden');
 
-    // Auto-load known_sites (checked by default)
-    const defaultOn = document.querySelectorAll('.overlay-cb:checked');
-    defaultOn.forEach(cb => toggleOverlay(cb.value, true));
+    // Auto-load all checked overlay layers
+    document.querySelectorAll('.overlay-cb:checked').forEach(cb => toggleOverlay(cb.value, true));
   });
 }
 
-// ── Sidebar wiring ────────────────────────────────────────────────────────────
+// ── Sidebar wiring ─────────────────────────────────────────────────────────────
 
 function wireSidebar() {
   document.querySelectorAll('.tier-cb').forEach(cb => {
@@ -583,7 +655,7 @@ function wireSidebar() {
   });
 }
 
-// ── Entry point ───────────────────────────────────────────────────────────────
+// ── Entry point ────────────────────────────────────────────────────────────────
 
 async function main() {
   try {
