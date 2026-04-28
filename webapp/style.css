@@ -331,6 +331,49 @@ header {
   text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px;
 }
 
+/* ── Overlay detail cards ── */
+.od-icon {
+  font-size: 18px; margin-bottom: 6px; display: block; line-height: 1;
+}
+.od-icon-dc   { color: #ff3b30; }
+.od-icon-acq  { color: #f59e0b; }
+.od-icon-grid { color: #34d399; }
+
+.od-title {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  line-height: 1.3; margin-bottom: 2px;
+}
+.od-subtitle {
+  font-size: 11px; color: var(--muted); margin-bottom: 8px;
+}
+.od-badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+  border: 1px solid; border-radius: 12px;
+  padding: 2px 9px; margin-bottom: 12px;
+}
+.od-section {
+  margin-bottom: 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.od-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 8px; font-size: 11px; padding: 2px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.od-row:last-child { border-bottom: none; }
+.od-key  { color: var(--muted); flex-shrink: 0; }
+.od-val  { color: var(--text); font-weight: 500; text-align: right; }
+.od-blurb {
+  font-size: 11px; color: var(--muted); line-height: 1.55;
+  border-left: 2px solid var(--border); padding-left: 9px;
+}
+.od-blurb strong { color: var(--text); font-weight: 600; }
+.od-blurb em { color: #94a3b8; font-style: normal; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }

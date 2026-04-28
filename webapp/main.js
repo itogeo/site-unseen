@@ -336,10 +336,13 @@ async function toggleOverlay(name, visible) {
       overlayPopup.remove();
     });
 
-    // Above-tribal click handler: mark event so tribal-fill click is skipped
+    // Above-tribal click handler: open detail panel + prevent tribal-fill from firing
     if (cfg.aboveTribal) {
       map.on('click', layerId, (e) => {
-        if (e.features.length) e.originalEvent._overlayHandled = true;
+        if (!e.features.length) return;
+        e.originalEvent._overlayHandled = true;
+        overlayPopup.remove();
+        showOverlayDetail(name, e.features[0].properties);
       });
     }
 
@@ -392,6 +395,107 @@ function renderTierCounts(features) {
     const el = document.getElementById(`count-${tier}`);
     if (el) el.textContent = n;
   });
+}
+
+// ── Overlay detail panel ───────────────────────────────────────────────────────
+
+function showOverlayDetail(layerName, props) {
+  const panel   = document.getElementById('detail-panel');
+  const content = document.getElementById('detail-content');
+
+  let html = '';
+
+  if (layerName === 'known_sites') {
+    const name    = props.name || '';
+    const company = props.company || '';
+    const display = company || name || 'Unknown';
+    const subtitle = (company && name && name !== company) ? name : '';
+    const status  = props.status || 'unknown';
+    const statusLabel = {
+      operational:        'Operational',
+      under_construction: 'Under construction',
+      planned:            'Planned',
+      closed:             'Closed / decommissioned',
+    }[status] || status;
+    const statusColor = {
+      operational:        '#34d399',
+      under_construction: '#fbbf24',
+      planned:            '#60a5fa',
+      closed:             '#6b7280',
+    }[status] || '#94a3b8';
+
+    html = `
+      <div class="od-icon od-icon-dc">▪</div>
+      <div class="od-title">${display}</div>
+      ${subtitle ? `<div class="od-subtitle">${subtitle}</div>` : ''}
+      <div class="od-badge" style="color:${statusColor};border-color:${statusColor}20;background:${statusColor}18">${statusLabel}</div>
+      <div class="od-section">
+        ${props.mw ? `<div class="od-row"><span class="od-key">Capacity</span><span class="od-val">${Math.round(props.mw)} MW</span></div>` : ''}
+        <div class="od-row"><span class="od-key">Source</span><span class="od-val">OpenStreetMap</span></div>
+      </div>
+      <div class="od-blurb">
+        A known data center facility mapped in OpenStreetMap near tribal lands.
+        ${company ? `Operated by <strong>${company}</strong>.` : ''}
+        ${status === 'under_construction' ? ' Currently under construction — infrastructure is being built.' : ''}
+        ${status === 'planned' ? ' In the planning stage — not yet built.' : ''}
+      </div>`;
+
+  } else if (layerName === 'land_acquisitions') {
+    const buyer   = props.buyer  || 'Unknown';
+    const parent  = props.resolved_parent || buyer;
+    const conf    = props.confidence || '?';
+    const state   = props.state || '';
+    const source  = props.source || '';
+    const date    = props.file_date || '';
+    const confColor = conf >= 65 ? '#f87171' : conf >= 50 ? '#fbbf24' : '#94a3b8';
+
+    html = `
+      <div class="od-icon od-icon-acq">▲</div>
+      <div class="od-title">${buyer}</div>
+      ${parent !== buyer ? `<div class="od-subtitle">Parent: ${parent}</div>` : ''}
+      <div class="od-badge" style="color:${confColor};border-color:${confColor}20;background:${confColor}18">${conf}% confidence</div>
+      <div class="od-section">
+        <div class="od-row"><span class="od-key">State</span><span class="od-val">${state}</span></div>
+        <div class="od-row"><span class="od-key">Signal</span><span class="od-val">${source}</span></div>
+        ${date ? `<div class="od-row"><span class="od-key">Filed</span><span class="od-val">${date}</span></div>` : ''}
+      </div>
+      <div class="od-blurb">
+        ${source.includes('EDGAR')
+          ? `<strong>${buyer}</strong> filed an SEC 8-K mentioning <em>data center</em> activity in ${state || 'this state'}, which has significant tribal land concentration. 8-K filings announce material corporate events — this signal suggests planned site acquisition or construction activity.`
+          : `A USACE construction permit application from <strong>${buyer}</strong> was detected near tribal lands in ${state || 'this state'}.`}
+      </div>`;
+
+  } else if (layerName === 'ferc_flags') {
+    const projName = props.project_name || props.applicant || 'Grid project';
+    const entity   = props.applicant || '';
+    const mw       = props.mw ? Math.round(props.mw) : null;
+    const status   = props.status || 'Proposed';
+    const tech     = props.technology || '';
+    const county   = props.county || '';
+    const state    = props.state || '';
+    const location = [county, state].filter(Boolean).join(', ');
+    const statusColor = status.toLowerCase().includes('construct') ? '#fbbf24' : '#60a5fa';
+
+    html = `
+      <div class="od-icon od-icon-grid">◆</div>
+      <div class="od-title">${projName}</div>
+      ${entity && entity !== projName ? `<div class="od-subtitle">${entity}</div>` : ''}
+      <div class="od-badge" style="color:${statusColor};border-color:${statusColor}20;background:${statusColor}18">${status}</div>
+      <div class="od-section">
+        ${mw ? `<div class="od-row"><span class="od-key">Capacity</span><span class="od-val">${mw.toLocaleString()} MW</span></div>` : ''}
+        ${tech ? `<div class="od-row"><span class="od-key">Technology</span><span class="od-val">${tech}</span></div>` : ''}
+        ${location ? `<div class="od-row"><span class="od-key">Location</span><span class="od-val">${location}</span></div>` : ''}
+        <div class="od-row"><span class="od-key">Source</span><span class="od-val">EIA Form 860M</span></div>
+      </div>
+      <div class="od-blurb">
+        A large planned generator (${mw ? mw.toLocaleString() + ' MW' : 'significant capacity'}) within 200 km of tribal lands.
+        ${mw && mw >= 500 ? ' At this scale it can power a major hyperscale data center campus.' : ''}
+        Grid expansion at this magnitude is one of the strongest pre-construction signals of incoming data center development.
+      </div>`;
+  }
+
+  content.innerHTML = html;
+  panel.classList.remove('hidden');
 }
 
 // ── Detail panel ───────────────────────────────────────────────────────────────
