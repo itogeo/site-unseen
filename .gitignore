@@ -1,0 +1,19 @@
+# Secrets
+.env
+
+# Large downloaded source data (re-runnable)
+data/raw/
+data/processed/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+
+# macOS
+.DS_Store
+
+# Output duplicates (canonical copy is in webapp/data/)
+output/

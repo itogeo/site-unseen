@@ -1,0 +1,351 @@
+'use strict';
+
+const TIER_COLORS = {
+  CRITICAL: '#ff3b30',
+  HIGH:     '#ff6b35',
+  MODERATE: '#ffd166',
+  LOW:      '#4a5568',
+};
+
+const SCORE_LABELS = {
+  corp: [
+    { key: 'score_transmission',  label: 'Transmission lines',  type: 'corp', max: 20 },
+    { key: 'score_substation',    label: 'Substation proximity', type: 'corp', max: 15 },
+    { key: 'score_water',         label: 'Water availability',  type: 'corp', max: 20 },
+    { key: 'score_aquifer',       label: 'Aquifer access',      type: 'corp', max: 10 },
+    { key: 'score_land_area',     label: 'Land area',           type: 'corp', max: 15 },
+    { key: 'score_terrain',       label: 'Terrain flatness',    type: 'corp', max: 10 },
+    { key: 'score_opp_zone',      label: 'Opportunity zone',    type: 'corp', max: 5  },
+    { key: 'score_flood_penalty', label: 'Flood risk',          type: 'penalty', max: 10 },
+  ],
+  vuln: [
+    { key: 'score_poverty',          label: 'Poverty rate',          type: 'vuln', max: 25 },
+    { key: 'score_ejscreen',         label: 'EJScreen burden',       type: 'vuln', max: 20 },
+    { key: 'score_sacrifice_history',label: 'Industry history',      type: 'vuln', max: 15 },
+    { key: 'score_remoteness',       label: 'Remoteness',            type: 'vuln', max: 10 },
+    { key: 'score_jurisdiction',     label: 'Jurisdictional fragility', type: 'vuln', max: 10 },
+  ],
+};
+
+let map, popup;
+let allFeatures = [];
+let activeTiers = new Set(['CRITICAL', 'HIGH', 'MODERATE', 'LOW']);
+let colorMode = 'tier';
+
+async function loadData() {
+  const [riskResp, statsResp] = await Promise.all([
+    fetch('data/tribal_datacenter_risk.geojson'),
+    fetch('data/stats.json'),
+  ]);
+  if (!riskResp.ok) throw new Error('Failed to load tribal_datacenter_risk.geojson');
+  const geojson = await riskResp.json();
+  const stats   = statsResp.ok ? await statsResp.json() : null;
+  return { geojson, stats };
+}
+
+function tierFillColor() {
+  return ['match', ['get', 'risk_tier'],
+    'CRITICAL', TIER_COLORS.CRITICAL,
+    'HIGH',     TIER_COLORS.HIGH,
+    'MODERATE', TIER_COLORS.MODERATE,
+    /* default */ TIER_COLORS.LOW,
+  ];
+}
+
+function scoreFillColor(field) {
+  return ['interpolate', ['linear'], ['coalesce', ['get', field], 0],
+    0,   '#1a2035',
+    0.25,'#1e3a5f',
+    0.5, '#2d6a9f',
+    0.7, '#ffd166',
+    0.85,'#ff6b35',
+    1,   '#ff3b30',
+  ];
+}
+
+function buildFillColor() {
+  if (colorMode === 'tier')     return tierFillColor();
+  if (colorMode === 'combined') return scoreFillColor('combined_score');
+  if (colorMode === 'corp')     return scoreFillColor('corp_score');
+  if (colorMode === 'vuln')     return scoreFillColor('vuln_score');
+  return tierFillColor();
+}
+
+function buildFilter() {
+  const tiers = [...activeTiers];
+  if (tiers.length === 4) return null;
+  if (tiers.length === 0) return ['==', ['get', 'risk_tier'], '__none__'];
+  return ['in', ['get', 'risk_tier'], ['literal', tiers]];
+}
+
+function applyFilter() {
+  if (!map.getLayer('tribal-fill')) return;
+  const f = buildFilter();
+  map.setFilter('tribal-fill',    f);
+  map.setFilter('tribal-outline', f);
+}
+
+function applyColor() {
+  if (!map.getLayer('tribal-fill')) return;
+  map.setPaintProperty('tribal-fill', 'fill-color', buildFillColor());
+  renderLegend();
+}
+
+function renderLegend() {
+  const el = document.getElementById('legend');
+  if (colorMode === 'tier') {
+    el.innerHTML = Object.entries(TIER_COLORS).map(([tier, color]) => `
+      <div class="legend-row">
+        <span class="legend-swatch" style="background:${color}"></span>
+        <span class="legend-label">${tier.charAt(0) + tier.slice(1).toLowerCase()}</span>
+      </div>`).join('');
+  } else {
+    const label = colorMode === 'combined' ? 'Combined Score'
+                : colorMode === 'corp'     ? 'Corp Score'
+                : 'Vuln Score';
+    el.innerHTML = `
+      <div class="gradient-bar" style="background:linear-gradient(to right,#1a2035,#2d6a9f,#ffd166,#ff3b30)"></div>
+      <div class="gradient-labels"><span>0</span><span>${label}</span><span>1</span></div>`;
+  }
+}
+
+function renderStats(stats) {
+  const el = document.getElementById('stats-panel');
+  if (!stats) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="stat-row"><span class="stat-label">Total tribal lands</span><span class="stat-val">${stats.total_tribal_lands}</span></div>
+    <div class="stat-row"><span class="stat-label">Critical risk</span><span class="stat-val critical">${stats.critical_count}</span></div>
+    <div class="stat-row"><span class="stat-label">High risk</span><span class="stat-val high">${stats.high_count}</span></div>
+    <div class="stat-row"><span class="stat-label">Moderate risk</span><span class="stat-val moderate">${stats.moderate_count}</span></div>
+    <div class="stat-row"><span class="stat-label">Total area (km²)</span><span class="stat-val">${Math.round(stats.total_area_km2).toLocaleString()}</span></div>
+    <div class="stat-row"><span class="stat-label">Known data centers</span><span class="stat-val">${stats.known_sites}</span></div>`;
+  const headerEl = document.getElementById('header-stats');
+  headerEl.textContent = `${stats.high_count} HIGH · ${stats.moderate_count} MODERATE · ${stats.total_tribal_lands} total`;
+}
+
+function renderTierCounts(features) {
+  const counts = { CRITICAL: 0, HIGH: 0, MODERATE: 0, LOW: 0 };
+  features.forEach(f => { const t = f.properties.risk_tier; if (counts[t] !== undefined) counts[t]++; });
+  Object.entries(counts).forEach(([tier, n]) => {
+    const el = document.getElementById(`count-${tier}`);
+    if (el) el.textContent = n;
+  });
+}
+
+function fmtScore(v) {
+  if (v == null) return '—';
+  return Number(v).toFixed(3);
+}
+
+function fmtRaw(v, max) {
+  if (v == null) return '—';
+  const n = Number(v);
+  const pct = Math.abs(n) / max * 100;
+  return { val: n.toFixed(1), pct: Math.min(pct, 100) };
+}
+
+function showDetail(props) {
+  const panel = document.getElementById('detail-panel');
+  const content = document.getElementById('detail-content');
+
+  let knownHtml = '';
+  if (props.known_datacenter) {
+    knownHtml = `<div class="known-dc-badge">
+      <span class="known-dc-icon">⚠</span>
+      <div class="known-dc-text">
+        <div class="known-dc-company">${props.known_dc_company || 'Unknown company'}</div>
+        <div>Known data center — ${props.known_dc_status || 'status unknown'}</div>
+      </div>
+    </div>`;
+  }
+
+  function barRow(item, value) {
+    const r = fmtRaw(value, item.max);
+    if (r === '—') return '';
+    const isPenalty = item.type === 'penalty';
+    const fillClass = isPenalty ? 'penalty' : item.type;
+    return `<div class="score-bar-row">
+      <span class="score-bar-label">${item.label}</span>
+      <div class="score-bar-track">
+        <div class="score-bar-fill ${fillClass}" style="width:${r.pct}%"></div>
+      </div>
+      <span class="score-bar-num">${isPenalty && r.val < 0 ? r.val : r.val}</span>
+    </div>`;
+  }
+
+  const corpRows = SCORE_LABELS.corp.map(it => barRow(it, props[it.key])).join('');
+  const vulnRows = SCORE_LABELS.vuln.map(it => barRow(it, props[it.key])).join('');
+
+  content.innerHTML = `
+    ${knownHtml}
+    <div class="detail-name">${props.tribe_name || '—'}</div>
+    <div class="detail-fullname">${props.tribe_name_full || ''}</div>
+    <span class="tier-badge ${props.risk_tier}">${props.risk_tier}</span>
+
+    <div class="score-pair">
+      <div class="score-card accent">
+        <div class="score-card-label">Combined</div>
+        <div class="score-card-val">${fmtScore(props.combined_score)}</div>
+      </div>
+      <div class="score-card">
+        <div class="score-card-label">Area (km²)</div>
+        <div class="score-card-val" style="font-size:15px">${props.area_km2 ? Math.round(props.area_km2).toLocaleString() : '—'}</div>
+      </div>
+    </div>
+
+    <div class="score-pair">
+      <div class="score-card">
+        <div class="score-card-label">Corp Score</div>
+        <div class="score-card-val" style="color:var(--c-high);font-size:16px">${fmtScore(props.corp_score)}</div>
+      </div>
+      <div class="score-card">
+        <div class="score-card-label">Vuln Score</div>
+        <div class="score-card-val" style="color:#a78bfa;font-size:16px">${fmtScore(props.vuln_score)}</div>
+      </div>
+    </div>
+
+    <div class="score-section-title">Corporate attractiveness factors</div>
+    ${corpRows}
+
+    <div class="score-section-title">Community vulnerability factors</div>
+    ${vulnRows}`;
+
+  panel.classList.remove('hidden');
+}
+
+function initMap(geojson) {
+  map = new maplibregl.Map({
+    container: 'map',
+    style: {
+      version: 8,
+      sources: {
+        esri: {
+          type: 'raster',
+          tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+          tileSize: 256,
+          attribution: 'Tiles © Esri &mdash; Source: Esri, Maxar, USGS',
+          maxzoom: 19,
+        },
+      },
+      layers: [{ id: 'esri-satellite', type: 'raster', source: 'esri' }],
+    },
+    center: [-96, 39],
+    zoom: 3.8,
+    minZoom: 2,
+  });
+
+  popup = new maplibregl.Popup({
+    closeButton: false,
+    closeOnClick: false,
+    offset: 4,
+    maxWidth: '240px',
+  });
+
+  map.on('load', () => {
+    map.addSource('tribal', {
+      type: 'geojson',
+      data: geojson,
+    });
+
+    map.addLayer({
+      id: 'tribal-fill',
+      type: 'fill',
+      source: 'tribal',
+      paint: {
+        'fill-color': buildFillColor(),
+        'fill-opacity': 0.72,
+      },
+    });
+
+    map.addLayer({
+      id: 'tribal-outline',
+      type: 'line',
+      source: 'tribal',
+      paint: {
+        'line-color': '#fff',
+        'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.2, 8, 1],
+        'line-opacity': 0.25,
+      },
+    });
+
+    map.addLayer({
+      id: 'tribal-fill-hover',
+      type: 'fill',
+      source: 'tribal',
+      filter: ['==', ['get', 'geoid'], ''],
+      paint: {
+        'fill-color': '#fff',
+        'fill-opacity': 0.12,
+      },
+    });
+
+    map.on('mousemove', 'tribal-fill', (e) => {
+      if (!e.features.length) return;
+      map.getCanvas().style.cursor = 'pointer';
+      const props = e.features[0].properties;
+      const tier = props.risk_tier;
+      popup.setLngLat(e.lngLat).setHTML(`
+        <div class="popup-name">${props.tribe_name || '—'}</div>
+        <div class="popup-tier ${tier}">${tier}</div>
+        <div class="popup-score">
+          <span>Combined <span class="popup-score-val">${fmtScore(props.combined_score)}</span></span>
+          <span>Corp <span class="popup-score-val">${fmtScore(props.corp_score)}</span></span>
+          <span>Vuln <span class="popup-score-val">${fmtScore(props.vuln_score)}</span></span>
+        </div>
+        <div class="popup-hint">Click for full breakdown</div>
+      `).addTo(map);
+      map.setFilter('tribal-fill-hover', ['==', ['get', 'geoid'], props.geoid]);
+    });
+
+    map.on('mouseleave', 'tribal-fill', () => {
+      map.getCanvas().style.cursor = '';
+      popup.remove();
+      map.setFilter('tribal-fill-hover', ['==', ['get', 'geoid'], '']);
+    });
+
+    map.on('click', 'tribal-fill', (e) => {
+      if (!e.features.length) return;
+      showDetail(e.features[0].properties);
+    });
+
+    document.getElementById('loading').classList.add('hidden');
+  });
+}
+
+function wireSidebar() {
+  document.querySelectorAll('.tier-cb').forEach(cb => {
+    cb.addEventListener('change', () => {
+      if (cb.checked) activeTiers.add(cb.value);
+      else activeTiers.delete(cb.value);
+      applyFilter();
+    });
+  });
+
+  document.querySelectorAll('input[name="colorby"]').forEach(r => {
+    r.addEventListener('change', () => {
+      colorMode = r.value;
+      applyColor();
+    });
+  });
+
+  document.getElementById('detail-close').addEventListener('click', () => {
+    document.getElementById('detail-panel').classList.add('hidden');
+  });
+}
+
+async function main() {
+  try {
+    const { geojson, stats } = await loadData();
+    allFeatures = geojson.features || [];
+    renderTierCounts(allFeatures);
+    renderStats(stats);
+    renderLegend();
+    wireSidebar();
+    initMap(geojson);
+  } catch (err) {
+    document.getElementById('loading').textContent = `Error: ${err.message}`;
+    console.error(err);
+  }
+}
+
+main();
