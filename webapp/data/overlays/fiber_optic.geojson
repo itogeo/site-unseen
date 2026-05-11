@@ -1,0 +1,25 @@
+{
+"type": "FeatureCollection",
+"name": "fiber_optic",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.8256218, 42.092847499999984 ], [ -87.8232876, 42.105234399999986 ], [ -87.7992095, 42.1050886 ], [ -87.7997572, 42.056684 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "Lumen Technologies", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.801946699999988, 42.1523241 ], [ -87.8526298, 42.15298839999997 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.8420662, 42.153616300000017 ], [ -87.7953841, 42.055072 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.7986727, 42.079929099999987 ], [ -87.8085599, 42.0799734 ], [ -87.839670200000015, 42.1491763 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "fibre" }, "geometry": { "type": "LineString", "coordinates": [ [ -105.8768609, 35.482612 ], [ -105.8763743, 35.482908899999963 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -88.8898419, 42.2762147 ], [ -88.8883571, 42.2761916 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -88.8719242, 42.276393899999981 ], [ -88.8648249, 42.2737155 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "Lumen Technologies", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.936769650219517, 42.006098508008328 ], [ -87.92986295297392, 42.004833706653599 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -110.9974265, 32.409839599999984 ], [ -110.9974262, 32.409808199999986 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "Comcast", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.9404758, 42.007258599999965 ], [ -87.9421124, 42.012230799999983 ], [ -87.93511725081558, 42.005748807783803 ], [ -87.8851412, 42.0095537 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "Verizon Communications", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.9365063, 42.0079495 ], [ -87.9469333, 42.012806099999978 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "comcast", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -87.9446929, 42.0104082 ], [ -87.9463512, 42.009898699999987 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -84.2691927, 35.7913833 ], [ -84.2679147, 35.789847 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -84.2679147, 35.789847 ], [ -84.2672072, 35.789129 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -84.2657968, 35.790979299999975 ], [ -84.2653418, 35.7907056 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -80.84698451007074, 36.477977729303035 ], [ -80.846268009429934, 36.47707103097062 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "Bug Tussel", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -88.4423541, 44.4736695 ], [ -88.431236, 44.4735474 ] ] } },
+{ "type": "Feature", "properties": { "OWNER": "", "CABLE_TYPE": "cable" }, "geometry": { "type": "LineString", "coordinates": [ [ -71.38537980000001, 41.875083 ], [ -71.3853845, 41.875035299999979 ] ] } }
+]
+}

@@ -21,14 +21,25 @@ OUTPUT_CRS = "EPSG:4326"
 
 EXPORT_COLS = [
     "geoid", "tribe_name", "tribe_name_full",
-    "area_km2", "state_fips",
+    "area_km2", "state_fips", "state_abbr",
     "corp_score", "siting_score", "combined_score",
     "risk_tier", "priority",
+    # Infrastructure scores
     "score_transmission", "score_substation", "score_water",
     "score_aquifer", "score_land_area", "score_terrain",
     "score_fiber_proximity", "score_power_cost",
     "score_highway_proximity", "score_ixp_proximity",
     "score_flood_penalty", "score_opp_zone",
+    # Economic / regulatory scores
+    "score_corp_tax", "score_dc_incentives", "score_metro_proximity",
+    "score_renewable_energy", "score_climate_cooling",
+    "score_natural_hazard", "score_tech_workforce",
+    # Raw display values
+    "dist_transmission_km", "dist_substation_km",
+    "dist_fiber_km", "dist_highway_km", "dist_ixp_km",
+    "dist_metro_km", "nearest_metro",
+    "power_cost_cents", "corp_tax_pct", "renewable_pct",
+    "mean_temp_f", "dc_incentive_score", "hazard_level", "tech_workforce",
     "known_datacenter", "known_dc_status", "known_dc_company",
     "geometry"
 ]

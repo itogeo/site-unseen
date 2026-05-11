@@ -15,20 +15,33 @@ const TIER_COLORS = {
   LOW:      '#374151',  // gray-700
 };
 
-const SCORE_LABELS = [
-  { key: 'score_transmission',    label: 'Transmission lines',  type: 'infra',   max: 20 },
-  { key: 'score_substation',      label: 'Substation proximity', type: 'infra',   max: 15 },
-  { key: 'score_water',           label: 'Water availability',  type: 'infra',   max: 20 },
-  { key: 'score_aquifer',         label: 'Aquifer access',      type: 'infra',   max: 10 },
-  { key: 'score_land_area',       label: 'Land area',           type: 'infra',   max: 15 },
-  { key: 'score_terrain',         label: 'Terrain flatness',    type: 'infra',   max: 10 },
+const INFRA_SCORE_LABELS = [
+  { key: 'score_transmission',       label: 'Transmission lines',   type: 'infra',   max: 20 },
+  { key: 'score_substation',         label: 'Substation proximity', type: 'infra',   max: 15 },
+  { key: 'score_water',              label: 'Water availability',   type: 'infra',   max: 20 },
+  { key: 'score_aquifer',            label: 'Aquifer access',       type: 'infra',   max: 10 },
+  { key: 'score_land_area',          label: 'Land area',            type: 'infra',   max: 15 },
+  { key: 'score_terrain',            label: 'Terrain flatness',     type: 'infra',   max: 10 },
   { key: 'score_fiber_proximity',    label: 'Fiber backbone',       type: 'infra',   max: 10 },
   { key: 'score_power_cost',         label: 'Power cost (state)',   type: 'infra',   max: 15 },
   { key: 'score_highway_proximity',  label: 'Highway access',       type: 'infra',   max: 10 },
   { key: 'score_ixp_proximity',      label: 'IXP hub proximity',    type: 'infra',   max: 15 },
-  { key: 'score_opp_zone',           label: 'Opportunity zone',     type: 'infra',   max: 5  },
+  { key: 'score_opp_zone',           label: 'Opportunity zone',     type: 'infra',   max:  5 },
   { key: 'score_flood_penalty',      label: 'Flood risk',           type: 'penalty', max: 10 },
 ];
+
+const ECON_SCORE_LABELS = [
+  { key: 'score_corp_tax',          label: 'Corp income tax rate',  type: 'infra',   max: 10 },
+  { key: 'score_dc_incentives',     label: 'DC tax incentives',     type: 'infra',   max: 10 },
+  { key: 'score_metro_proximity',   label: 'Metro market access',   type: 'infra',   max: 10 },
+  { key: 'score_renewable_energy',  label: 'Renewable energy mix',  type: 'infra',   max: 10 },
+  { key: 'score_climate_cooling',   label: 'Climate cooling edge',  type: 'infra',   max:  8 },
+  { key: 'score_natural_hazard',    label: 'Natural hazard risk',   type: 'penalty', max:  6 },
+  { key: 'score_tech_workforce',    label: 'Tech workforce depth',  type: 'infra',   max:  8 },
+];
+
+// Legacy alias so any existing code referencing SCORE_LABELS still works
+const SCORE_LABELS = [...INFRA_SCORE_LABELS, ...ECON_SCORE_LABELS];
 
 // ── Icon generation for market-signal symbol layers ────────────────────────────
 
@@ -537,17 +550,30 @@ function fmtScore(v) {
   return Number(v).toFixed(3);
 }
 
-function fmtRaw(v, max) {
-  if (v == null) return '—';
+function fmtKm(v) {
+  if (v == null || v === '' || isNaN(Number(v))) return '—';
   const n = Number(v);
-  const pct = Math.abs(n) / max * 100;
-  return { val: n.toFixed(1), pct: Math.min(pct, 100) };
+  return n < 10 ? n.toFixed(1) + ' km' : Math.round(n) + ' km';
+}
+
+function fmtHazard(level) {
+  const n = Number(level);
+  if (n === 0)  return { text: 'Low', color: '#4ade80' };
+  if (n >= -2)  return { text: 'Moderate', color: '#fbbf24' };
+  if (n >= -4)  return { text: 'Elevated', color: '#f97316' };
+  return { text: 'High', color: '#f87171' };
+}
+
+function dataRow(label, value) {
+  if (value == null || value === '' || value === 'null') return '';
+  return `<div class="od-row"><span class="od-key">${label}</span><span class="od-val">${value}</span></div>`;
 }
 
 function showDetail(props) {
   const panel = document.getElementById('detail-panel');
   const content = document.getElementById('detail-content');
   const tierDisplay = TIER_DISPLAY[props.risk_tier] || props.risk_tier;
+  const stateLabel = props.state_abbr ? ` · ${props.state_abbr}` : '';
 
   let existingDcHtml = '';
   if (props.known_datacenter) {
@@ -560,26 +586,33 @@ function showDetail(props) {
     </div>`;
   }
 
-  function barRow(item, value) {
-    const r = fmtRaw(value, item.max);
-    if (r === '—') return '';
-    const isPenalty = item.type === 'penalty';
-    const fillClass = isPenalty ? 'penalty' : 'infra';
-    return `<div class="score-bar-row">
-      <span class="score-bar-label">${item.label}</span>
-      <div class="score-bar-track">
-        <div class="score-bar-fill ${fillClass}" style="width:${r.pct}%"></div>
-      </div>
-      <span class="score-bar-num">${r.val}</span>
-    </div>`;
+  // Metro row: "132 km — Phoenix, AZ"
+  let metroVal = '—';
+  if (props.dist_metro_km != null && props.dist_metro_km !== '') {
+    metroVal = fmtKm(props.dist_metro_km);
+    if (props.nearest_metro && props.nearest_metro !== 'null') {
+      metroVal += ` — ${props.nearest_metro}`;
+    }
   }
 
-  const infraRows = SCORE_LABELS.map(it => barRow(it, props[it.key])).join('');
+  // Hazard display
+  const haz = fmtHazard(props.hazard_level);
+  const hazardVal = `<span style="color:${haz.color}">${haz.text}</span>`;
+
+  // Incentive score out of 10
+  const incentiveVal = props.dc_incentive_score != null
+    ? `${props.dc_incentive_score} / 10`
+    : '—';
+
+  // Tech workforce out of 8
+  const workforceVal = props.tech_workforce != null
+    ? `${props.tech_workforce} / 8`
+    : '—';
 
   content.innerHTML = `
     ${existingDcHtml}
     <div class="detail-name">${props.tribe_name || '—'}</div>
-    <div class="detail-fullname">${props.tribe_name_full || ''}</div>
+    <div class="detail-fullname">${props.tribe_name_full || ''}${stateLabel}</div>
     <span class="tier-badge ${props.risk_tier}">${tierDisplay}</span>
 
     <div class="score-pair">
@@ -588,16 +621,41 @@ function showDetail(props) {
         <div class="score-card-val">${fmtScore(props.corp_score)}</div>
       </div>
       <div class="score-card">
-        <div class="score-card-label">Area (km²)</div>
-        <div class="score-card-val" style="font-size:15px">${props.area_km2 ? Math.round(props.area_km2).toLocaleString() : '—'}</div>
+        <div class="score-card-label">Land Area</div>
+        <div class="score-card-val" style="font-size:15px">${props.area_km2 ? Math.round(props.area_km2).toLocaleString() + ' km²' : '—'}</div>
       </div>
     </div>
 
-    <div class="score-section-title">Infrastructure siting factors</div>
-    ${infraRows}
+    <div class="score-section-title">Power &amp; Grid</div>
+    <div class="od-section">
+      ${dataRow('115kV+ transmission', fmtKm(props.dist_transmission_km))}
+      ${dataRow('HV substation', fmtKm(props.dist_substation_km))}
+      ${dataRow('Electricity rate', props.power_cost_cents != null ? props.power_cost_cents + ' ¢/kWh' : '—')}
+    </div>
 
-    <div class="score-section-title" style="margin-top:12px">Sovereign advantages</div>
-    <div class="hint" style="font-size:11px;color:#9ca3af;padding:4px 0">
+    <div class="score-section-title">Connectivity</div>
+    <div class="od-section">
+      ${dataRow('Fiber backbone', fmtKm(props.dist_fiber_km))}
+      ${dataRow('Nearest IXP hub', fmtKm(props.dist_ixp_km))}
+    </div>
+
+    <div class="score-section-title">Land &amp; Logistics</div>
+    <div class="od-section">
+      ${dataRow('Interstate highway', fmtKm(props.dist_highway_km))}
+      ${dataRow('Nearest major metro', metroVal)}
+    </div>
+
+    <div class="score-section-title">Business Climate</div>
+    <div class="od-section">
+      ${dataRow('Corp income tax', props.corp_tax_pct != null ? props.corp_tax_pct + '%' : '—')}
+      ${dataRow('Renewable energy mix', props.renewable_pct != null ? props.renewable_pct + '%' : '—')}
+      ${dataRow('Avg annual temp', props.mean_temp_f != null ? props.mean_temp_f + '°F' : '—')}
+      ${dataRow('DC tax incentives', incentiveVal)}
+      ${dataRow('Natural hazard', hazardVal)}
+      ${dataRow('Tech workforce', workforceVal)}
+    </div>
+
+    <div class="od-blurb" style="margin-top:12px">
       Tribal sovereign lands can offer streamlined permitting, custom power rate negotiation,
       Opportunity Zone tax incentives, and Section 17 corporate charter flexibility.
     </div>`;

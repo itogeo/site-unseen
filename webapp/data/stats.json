@@ -1,9 +1,35 @@
 {
   "total_tribal_lands": 625,
-  "critical_count": 0,
-  "high_count": 182,
-  "moderate_count": 56,
+  "critical_count": 137,
+  "high_count": 169,
+  "moderate_count": 74,
   "known_sites": 0,
   "total_area_km2": 450982.0,
-  "top_critical": []
+  "top_prime": [
+    {
+      "tribe_name": "Tulalip",
+      "corp_score": 1.0,
+      "area_km2": 135.145
+    },
+    {
+      "tribe_name": "Cherokee",
+      "corp_score": 0.992,
+      "area_km2": 18034.68
+    },
+    {
+      "tribe_name": "Creek",
+      "corp_score": 0.984,
+      "area_km2": 12394.231
+    },
+    {
+      "tribe_name": "Chickasaw",
+      "corp_score": 0.983,
+      "area_km2": 19244.865
+    },
+    {
+      "tribe_name": "Fort Hall",
+      "corp_score": 0.974,
+      "area_km2": 2213.97
+    }
+  ]
 }

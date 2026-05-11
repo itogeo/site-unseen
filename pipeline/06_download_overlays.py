@@ -3,9 +3,9 @@ pipeline/06_download_overlays.py
 Downloads national infrastructure overlay datasets for the Site Unseen webapp.
 
 Sources:
-  - HIFLD (confirmed in catalog):  transmission_lines, wind_turbines
+  - HIFLD (confirmed in catalog):  transmission_lines
   - OpenStreetMap Overpass API:    power_plants, substations, gas_pipelines,
-                                   fiber_optic, railways, highways
+                                   fiber_optic, wind_turbines, railways, highways
   - Hardcoded:                     ixp_locations (major US internet exchanges)
 
 Run after: pipeline/00_download_data.py
@@ -24,8 +24,11 @@ import requests
 RAW_OVERLAYS = Path("data/raw/overlays")
 RAW_OVERLAYS.mkdir(parents=True, exist_ok=True)
 
-TIMEOUT = 120
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+TIMEOUT = 420
+OVERPASS_URLS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+]
 
 HIFLD_BASE = (
     "https://services1.arcgis.com/Hp6G80Pky0om7QvQ"
@@ -48,13 +51,6 @@ HIFLD_SOURCES = {
         "fields": "VOLTAGE,TYPE,STATUS,OWNER",
         "description": "High-voltage transmission lines (HIFLD)",
         "use_bbox": True,
-    },
-    "wind_turbines": {
-        "service": "US_Wind_Turbines",
-        "where": "1=1",
-        "fields": "p_name,t_state,t_county,p_tnum,t_cap,t_hh,t_rd,p_year",
-        "description": "US wind turbines (HIFLD/USGS)",
-        "use_bbox": False,
     },
 }
 
@@ -120,20 +116,22 @@ def fetch_hifld(name: str, config: dict) -> dict:
 # ── Overpass API ──────────────────────────────────────────────────────────────
 
 def _overpass_post(query: str, label: str) -> list:
-    """POST an Overpass QL query, return elements list."""
-    print(f"  Overpass: {label}...")
-    try:
-        resp = requests.post(
-            OVERPASS_URL,
-            data={"data": query},
-            timeout=TIMEOUT,
-            headers={"User-Agent": "SiteUnseen/1.0 contact@itogeo.com"},
-        )
-        resp.raise_for_status()
-        return resp.json().get("elements", [])
-    except Exception as e:
-        print(f"  [error] Overpass: {e}")
-        return []
+    """POST an Overpass QL query, return elements list. Tries mirror on failure."""
+    for url in OVERPASS_URLS:
+        print(f"  Overpass ({url.split('/')[2]}): {label}...")
+        try:
+            resp = requests.post(
+                url,
+                data={"data": query},
+                timeout=TIMEOUT,
+                headers={"User-Agent": "SiteUnseen/1.0 contact@itogeo.com"},
+            )
+            resp.raise_for_status()
+            return resp.json().get("elements", [])
+        except Exception as e:
+            print(f"  [error] {url.split('/')[2]}: {e} — trying next mirror")
+    print(f"  [error] All Overpass mirrors failed for: {label}")
+    return []
 
 
 def _elements_to_geojson(elements: list) -> dict:
@@ -217,6 +215,43 @@ out center tags;
     return fc
 
 
+def fetch_wind_turbines_overpass() -> dict:
+    """Wind turbines from OSM (generator:source=wind), fetched in 4 regional quadrants."""
+    print(f"\n[overpass] wind_turbines (quadrant fetch)")
+    # Split US into 4 quadrants to avoid Overpass timeout on full-US query
+    QUADS = [
+        ("NW", "40,-179.5,72,-100"),
+        ("NE", "40,-100,72,-66"),
+        ("SW", "18,-179.5,40,-100"),
+        ("SE", "18,-100,40,-66"),
+    ]
+    all_elements = []
+    for label, bbox in QUADS:
+        query = f"""
+[out:json][timeout:120][bbox:{bbox}];
+(
+  node["power"="generator"]["generator:source"="wind"];
+  way["power"="generator"]["generator:source"="wind"];
+);
+out center tags;
+"""
+        elements = _overpass_post(query, f"wind turbines {label}")
+        print(f"  {label}: {len(elements)} elements")
+        all_elements.extend(elements)
+
+    print(f"  Total raw elements: {len(all_elements)}")
+    fc = _elements_to_geojson(all_elements)
+    for feat in fc["features"]:
+        p = feat["properties"]
+        p.setdefault("p_name",  p.get("name", p.get("operator", "")))
+        p.setdefault("t_state", "")
+        p.setdefault("t_county","")
+        p.setdefault("t_cap",   p.get("generator:output:electricity", ""))
+        p.setdefault("p_year",  p.get("start_date", ""))
+    print(f"  Features: {len(fc['features'])}")
+    return fc
+
+
 def fetch_gas_pipelines_overpass() -> dict:
     """Natural gas pipelines from OSM."""
     print(f"\n[overpass] gas_pipelines")
@@ -240,8 +275,12 @@ def fetch_fiber_overpass() -> dict:
     """Long-haul fiber optic backbone cables from OSM."""
     print(f"\n[overpass] fiber_optic")
     query = f"""
-[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
-way["telecom"="cable"];
+[out:json][timeout:300][bbox:{US_BBOX_OVERPASS}];
+(
+  way["telecom"="cable"];
+  way["telecom"~"fiber|fibre",i];
+  way["communication:type"~"fiber|fibre",i];
+);
 out geom tags;
 """
     elements = _overpass_post(query, "US fiber backbone cables")
@@ -256,11 +295,11 @@ out geom tags;
 
 
 def fetch_railways_overpass() -> dict:
-    """Main line and light rail from OSM."""
+    """Main line railways from OSM."""
     print(f"\n[overpass] railways")
     query = f"""
-[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
-way["railway"~"^(rail|light_rail)$"];
+[out:json][timeout:300][bbox:{US_BBOX_OVERPASS}];
+way["railway"="rail"];
 out geom tags;
 """
     elements = _overpass_post(query, "US railways")
@@ -278,7 +317,7 @@ def fetch_highways_overpass() -> dict:
     """Interstate highways (motorways) from OSM."""
     print(f"\n[overpass] highways")
     query = f"""
-[out:json][timeout:240][bbox:{US_BBOX_OVERPASS}];
+[out:json][timeout:300][bbox:{US_BBOX_OVERPASS}];
 way["highway"="motorway"];
 out geom tags;
 """
@@ -328,7 +367,7 @@ def create_ixp_geojson() -> dict:
 
 LAYER_FETCHERS = {
     "transmission_lines": lambda: fetch_hifld("transmission_lines", HIFLD_SOURCES["transmission_lines"]),
-    "wind_turbines":      lambda: fetch_hifld("wind_turbines",      HIFLD_SOURCES["wind_turbines"]),
+    "wind_turbines":      fetch_wind_turbines_overpass,
     "power_plants":       fetch_power_plants_overpass,
     "substations":        fetch_substations_overpass,
     "gas_pipelines":      fetch_gas_pipelines_overpass,
